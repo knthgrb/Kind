@@ -32,6 +32,79 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Plus Jakarta Sans';
 }
 
+/* LOGIN */
+.loginH1 {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 40px;
+  font-weight: 800;
+  color: #12223B;
+}
+.loginLabel {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 15.5px;
+  font-weight: 500;
+  color: #000;
+}
+.input-placeholder::placeholder {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 13px;
+  font-weight: 400;
+  color: #808080;
+}
+
+/* REGISTER */
+.registerH1 {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 40px;
+  font-weight: 800;
+  color: #12223B;
+}
+
+.registerLabel {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 15.5px;
+  font-weight: 500;
+  color: #000;
+}
+
+.registerInput::placeholder {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 13px;
+  font-weight: 400;
+  color: #808080;
+}
+
+
+
+/* SIGNUP */
+.signupH1 {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 36px;
+  font-weight: 700;
+  color: #05264E;
+}
+
+.signupH2 {
+  font-family: 'Plus Jakarta Sans';
+  font-size: 18px;
+  font-weight: 500;
+  color: #66789C;
+}
+
+.signupH3 {
+    font-family: 'Plus Jakarta Sans';
+  font-size: 17.5px;
+  font-weight: 700;
+  color: #05264E;
+}
+.signupBullet {
+    font-family: 'Plus Jakarta Sans';
+  font-size: 14px;
+  font-weight: 500;
+  color: #454545;
+}
+
+
 .headingH1 {
   font-family: 'Plus Jakarta Sans';
   font-size: 54.57px;
