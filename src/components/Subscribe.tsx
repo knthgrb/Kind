@@ -20,7 +20,7 @@ export default function Subscribe() {
                             className="subscribeP flex-1 bg-transparent text-red-700 placeholder-red-700 focus:outline-none"
                         />
                     </div>
-                    <button className="subscribeP flex items-center gap-2 px-8 py-4 bg-white text-red-700 rounded-lg w-fit">
+                    <button className="subscribeP flex items-center gap-2 px-8 py-4 bg-white text-red-700 rounded-lg w-fit border-2 border-transparent hover:border-white hover:bg-[#CC0000] hover:text-white">
                         <GoVerified className="text-xl" />
                         Subscribe
                     </button>

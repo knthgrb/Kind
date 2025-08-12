@@ -8,7 +8,6 @@ import PricingCard from '../components/PricingCard';
 import FaqAccordion from '../components/FaqAccordion';
 import Subscribe from "@/components/Subscribe";
 import Footer from "@/components/Footer";
-import { FaArrowRight } from "react-icons/fa6";
 
 
 export default function Home() {
@@ -204,12 +203,6 @@ export default function Home() {
         jobTypes={jobTypes}
         payTypes={payTypes}
       />
-
-      <div className="flex justify-center w-full my-8">
-        <button className="py-3 px-8 bg-white text-[#CC0000] border-2 border-[#CC0000] rounded-lg text-lg hover:bg-[#CC0000] hover:text-white w-full sm:w-auto">
-          <span className="flex items-center gap-2 text-sm">View All<FaArrowRight /></span>
-        </button>
-      </div>
 
       <SectionHeader
         title="Benefits"

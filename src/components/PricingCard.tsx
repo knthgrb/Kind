@@ -14,14 +14,14 @@ type PricingProps = {
 export default function PricingList({ pricing }: PricingProps) {
   return (
     <section className="bg-white">
-      <div className="max-w-7xl bg-white mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4">        
+      <div className="max-w-6xl bg-white mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-4">        
         {pricing.map((pricing, index) => (
           <div key={index} className="flex flex-col p-[45px] rounded-2xl bg-white border border-[#E6E7E9] hover:border-gray-400 transition-all w-full h-auto">
             <h3 className="pricingh3">
                 {pricing.tier}
             </h3>
             <p>
-              <span className="pricingPrice text-[#CC0000]">${pricing.price.toLocaleString()}</span>
+              <span className="pricingPrice text-[#CC0000]">₱{pricing.price.toLocaleString()}</span>
               <span className="pricingPriceSubtext">/month</span>
             </p>
             
@@ -29,11 +29,11 @@ export default function PricingList({ pricing }: PricingProps) {
                 {pricing.description}
             </p>
             <hr  className="pricingP mb-[20px] mt-[20px]"></hr>
-            <ul className="mb-[40px]">
+            <ul className="mb-[40px] space-y-5">
               {pricing.features.map((feature, featureIndex) => (
                 <li
                   key={featureIndex}
-                  className="pricingFeatures mt-[10px] mb-[10px] flex items-center gap-2"
+                  className="pricingFeatures flex items-center gap-3"
                 >
                   <span className="w-6 h-6 rounded-full flex items-center justify-center bg-[#cc00001a]">
                     <FaCheck className="text-[#CC0000] text-xs" />
