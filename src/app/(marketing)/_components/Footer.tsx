@@ -60,7 +60,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="footerH4">Quick links</h3>
             <div className="flex flex-col space-y-2">
-              <Link href="/sign-up" className="footerP hover:text-red-600">
+              <Link href="/register" className="footerP hover:text-red-600">
                 Sign Up
               </Link>
               <Link href="/login" className="footerP hover:text-red-600">
