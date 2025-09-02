@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MONTHS, WORK_HISTORY_YEARS } from "@/constants/onboarding";
 import { WorkEntry } from "@/types/onboarding";
 import { formatDateRange } from "@/helpers/dateUtils";
 import Dropdown from "@/components/dropdown/Dropdown";
 import StepperFooter from "@/components/StepperFooter";
+import { createClient } from "@/utils/supabase/client";
 
 export default function WorkHistoryClient() {
   const router = useRouter();
@@ -26,8 +27,50 @@ export default function WorkHistoryClient() {
   const [endYear, setEndYear] = useState("");
   const [description, setDescription] = useState("");
 
+  // save state
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const months = [...MONTHS];
   const years = WORK_HISTORY_YEARS.map(String);
+
+  // Load existing data when component mounts
+  useEffect(() => {
+    const loadExistingData = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profileData } = await supabase
+          .from('helper_profiles')
+          .select('work_experience')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileData?.work_experience && Array.isArray(profileData.work_experience)) {
+          const workEntries = profileData.work_experience.map((exp: Record<string, unknown>) => ({
+            jobTitle: String(exp.jobTitle || exp.employer || ''),
+            company: String(exp.company || ''),
+            startMonth: exp.startDate ? new Date(String(exp.startDate)).toLocaleDateString('en-US', { month: 'long' }) : '',
+            startYear: exp.startDate ? new Date(String(exp.startDate)).getFullYear().toString() : '',
+            endMonth: exp.endDate ? new Date(String(exp.endDate)).toLocaleDateString('en-US', { month: 'long' }) : '',
+            endYear: exp.endDate ? new Date(String(exp.endDate)).getFullYear().toString() : '',
+            description: String(exp.description || ''),
+            expanded: false
+          }));
+          setEntries(workEntries);
+        }
+      } catch (error) {
+        console.error('Error loading existing data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadExistingData();
+  }, []);
 
   const resetForm = () => {
     setJobTitle("");
@@ -99,11 +142,102 @@ export default function WorkHistoryClient() {
     }
   };
 
+  const handleNext = async () => {
+    if (entries.length === 0) {
+      setSaveError("Please add at least one work experience entry");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const supabase = createClient();
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSaveError("User not authenticated");
+        return;
+      }
+
+      console.log("🔄 Saving work history for user:", user.id);
+      console.log("💼 Work entries:", entries);
+
+      // Convert entries to the format expected by the database
+      const workExperience = entries.map(entry => ({
+        jobTitle: entry.jobTitle,
+        company: entry.company,
+        startDate: `${entry.startYear}-${entry.startMonth.padStart(2, '0')}-01`,
+        endDate: entry.endYear && entry.endMonth ? `${entry.endYear}-${entry.endMonth.padStart(2, '0')}-01` : null,
+        description: entry.description,
+        duration: formatDateRange(entry.startMonth, entry.startYear, entry.endMonth, entry.endYear)
+      }));
+
+      // Check if helper_profile exists, if not create it
+      const { data: existingProfile } = await supabase
+        .from('helper_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      let saveResult;
+      if (existingProfile) {
+        // Update existing profile with work experience
+        saveResult = await supabase
+          .from('helper_profiles')
+          .update({
+            work_experience: workExperience,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Create new profile with work experience
+        saveResult = await supabase
+          .from('helper_profiles')
+          .insert({
+            user_id: user.id,
+            work_experience: workExperience,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+      }
+
+      if (saveResult.error) {
+        console.error("❌ Error saving work history:", saveResult.error);
+        setSaveError(`Failed to save data: ${saveResult.error.message}`);
+        return;
+      }
+
+      console.log("✅ Work history saved successfully!");
+      console.log("📊 Updated helper_profiles table with work_experience");
+      
+      // Redirect to next stage
+      router.push("/onboarding/document-upload");
+      
+    } catch (err) {
+      console.error("❌ Unexpected error saving work history:", err);
+      setSaveError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const toggleExpand = (idx: number) => {
     setEntries((prev) =>
       prev.map((e, i) => (i === idx ? { ...e, expanded: !e.expanded } : e))
     );
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md mb-6">
+          <p className="text-blue-600 text-sm">Loading your data...</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -293,9 +427,25 @@ export default function WorkHistoryClient() {
         </div>
       </div>
       <br />
+
+      {/* Error Message */}
+      {saveError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md mb-6">
+          <p className="text-red-600 text-sm">{saveError}</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isSaving && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md mb-6">
+          <p className="text-blue-600 text-sm">Saving your work history...</p>
+        </div>
+      )}
+
       <StepperFooter
         onBack={() => router.push("/onboarding/skills-availability")}
-        onNext={() => router.push("/onboarding/document-upload")}
+        onNext={isSaving ? undefined : handleNext}
+        nextLabel={isSaving ? "Saving..." : "Next"}
       />
     </>
   );
