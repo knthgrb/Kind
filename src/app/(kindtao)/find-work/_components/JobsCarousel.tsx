@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import JobCard, { Job } from "@/components/jobsearch/JobCard";
-import JobSearch, { Filters } from "@/components/jobsearch/JobSearch";
+import JobCard, { Job } from "@/components/jobs/JobCardTest";
+import JobSearch, { Filters } from "@/components/jobs/JobSearch";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
