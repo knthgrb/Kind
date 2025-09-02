@@ -13,8 +13,31 @@ import Card from "@/components/Card";
 import Chip from "@/components/Chip";
 import RedButton from "@/components/ui/RedButton";
 import GhostButton from "@/components/ui/GhostButton";
+import { UserProfile } from "@/types/userProfile";
+import { capitalizeWords } from "@/helpers/capitalize";
 
-export default function ProfileClient() {
+interface ProfileClientProps {
+  user: UserProfile;
+}
+
+export default function ProfileClient({ user }: ProfileClientProps) {
+  const {
+    first_name,
+    last_name,
+    email,
+    phone,
+    profile_image_url,
+    address,
+    city,
+    province,
+    postal_code,
+  } = user;
+
+  const fullName = [first_name, last_name].filter(Boolean).join(" ");
+  const fullAddress = [address, city, province, postal_code]
+    .filter(Boolean)
+    .join(", ");
+
   /* Work history */
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
   const [editingWork, setEditingWork] = useState(false);
@@ -62,7 +85,10 @@ export default function ProfileClient() {
     );
 
   /* Skills */
-  const [skills, setSkills] = useState<string[]>(["Cooking", "Cleaning"]);
+  const [skills, setSkills] = useState<string[]>(
+    (user.helper_profiles?.skills ?? []).map(capitalizeWords)
+  );
+
   const [editingSkills, setEditingSkills] = useState(false);
   const [skillInput, setSkillInput] = useState("");
   const addSkill = () => {
@@ -92,23 +118,41 @@ export default function ProfileClient() {
     setSelectedSlots((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
-  const [availItems, setAvailItems] = useState<AvailabilityItem[]>([
-    { id: crypto.randomUUID(), days: selectedDays, slots: selectedSlots },
-  ]);
+  const [availItems, setAvailItems] = useState<AvailabilityItem[]>([]);
 
   const addAvailability = () => {
-    setAvailItems((prev) => [
+    if (selectedDays.length === 0 && selectedSlots.length === 0) return;
+
+    const newDays = [...selectedDays].sort();
+    const newSlots = [...selectedSlots].sort();
+
+    setAvailItems([
       {
         id: crypto.randomUUID(),
-        days: [...selectedDays],
-        slots: [...selectedSlots],
+        days: newDays,
+        slots: newSlots,
       },
-      ...prev,
     ]);
+
     setEditingAvail(false);
   };
-  const removeAvailability = (id: string) =>
-    setAvailItems((prev) => prev.filter((a) => a.id !== id));
+
+  // Remove just one day from an availability
+  const removeDay = (id: string, day: string) => {
+    setAvailItems((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, days: a.days.filter((d) => d !== day) } : a
+      )
+    );
+  };
+
+  const removeSlot = (id: string, slot: string) => {
+    setAvailItems((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, slots: a.slots.filter((s) => s !== slot) } : a
+      )
+    );
+  };
 
   /* Location Preference */
   const [editingLoc, setEditingLoc] = useState(false);
@@ -124,8 +168,15 @@ export default function ProfileClient() {
     setLocs((prev) => prev.filter((x) => x !== l));
 
   /* Job Preferences */
+
   const [editingJobs, setEditingJobs] = useState(false);
-  const [prefs, setPrefs] = useState<string[]>([]);
+  const [prefs, setPrefs] = useState<string[]>(
+    (user.helper_profiles?.preferred_job_types ?? []).map(capitalizeWords)
+  );
+  // const [pre, setSkills] = useState<string[]>(
+  //   (user.helper_profiles?.skills ?? []).map(capitalizeWords)
+  // );
+
   const [prefInput, setPrefInput] = useState("");
   const addPref = () => {
     const s = prefInput.trim();
@@ -180,9 +231,11 @@ export default function ProfileClient() {
                   </div>
                 </div>
                 <div className="relative">
-                  <span className="absolute -inset-1 rounded-full ring-4 ring-[#21C36D]/30" />
+                  <span className="absolute -inset-1 rounded-full" />
                   <Image
-                    src="/profile/profile_placeholder.png"
+                    src={
+                      profile_image_url || "/profile/profile_placeholder.png"
+                    }
                     alt="Profile"
                     width={196}
                     height={196}
@@ -192,17 +245,16 @@ export default function ProfileClient() {
               </div>
               <div className="flex-1">
                 <div className="text-xl sm:text-[1.417rem] font-semibold text-[#222222] mt-1">
-                  Alwin Smith
+                  {fullName || "No name"}
                 </div>
                 <div className="text-sm sm:text-[1.006rem] text-[#667282] mt-1">
-                  example@gmail.com
+                  {email}
                 </div>
                 <div className="text-sm sm:text-[1.006rem] text-[#667282] mt-1">
-                  +63 945 4856 456
+                  {phone || "No phone"}
                 </div>
                 <div className="text-sm sm:text-[1.006rem] text-[#667282] mt-1">
-                  Blk 12 Lot 8 Mabuhay St, Brgy <br />
-                  San Isidro, Quezon City, Metro Manila, Philippines
+                  {fullAddress || "No address provided"}
                 </div>
               </div>
             </div>
@@ -467,17 +519,15 @@ export default function ProfileClient() {
                 {availItems.map((a) => (
                   <div key={a.id} className="flex flex-wrap gap-2 items-center">
                     {a.days.map((d) => (
-                      <Chip key={d}>{d}</Chip>
+                      <Chip key={d} onRemove={() => removeDay(a.id, d)}>
+                        {d}
+                      </Chip>
                     ))}
                     {a.slots.map((s) => (
-                      <Chip key={s}>{s}</Chip>
+                      <Chip key={s} onRemove={() => removeSlot(a.id, s)}>
+                        {s}
+                      </Chip>
                     ))}
-                    <button
-                      className="text-sm underline ml-2"
-                      onClick={() => removeAvailability(a.id)}
-                    >
-                      Remove
-                    </button>
                   </div>
                 ))}
               </div>
