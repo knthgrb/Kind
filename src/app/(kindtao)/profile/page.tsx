@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { fetchUserProfile } from "@/services/profile/fetchUserProfile";
+import { getCompleteKindTaoProfile } from "@/services/profile/getCompleteKindTaoProfile";
 import ProfileClient from "./_components/ProfileClient";
 
 export default async function ProfilePage() {
-  const profile = await fetchUserProfile();
+  const profile = await getCompleteKindTaoProfile();
 
   if (!profile) {
     redirect("/login");
