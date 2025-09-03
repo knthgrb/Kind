@@ -1,36 +1,27 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import PostedJobGrid from "./PostedJobsGrid";
 import { FiLogOut } from "react-icons/fi";
 import { LuPencil } from "react-icons/lu";
 import Card from "@/components/Card";
 import { JobPost } from "@/types/jobPosts";
+import { KindBossingProfile } from "@/types/kindBossingProfile";
 
-interface User {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  profile_image_url: string | null;
-  address: string | null;
-  city: string | null;
-  province: string | null;
-  postal_code: string | null;
-
-  // Relations
-  job_posts?: JobPost[];
-}
+type MyProfileClientProps = {
+  user: KindBossingProfile;
+  postedJobs: JobPost[];
+  page: number;
+  totalPages: number;
+};
 
 export default function MyProfileClient({
   user,
   postedJobs,
-}: {
-  user: User;
-  postedJobs: JobPost[];
-}) {
+  page,
+  totalPages,
+}: MyProfileClientProps) {
   const [editingProfile, setEditingProfile] = useState(false);
   const [form, setForm] = useState({
     first_name: user.first_name || "",
@@ -42,6 +33,8 @@ export default function MyProfileClient({
     province: user.province || "",
     postal_code: user.postal_code || "",
   });
+
+  const family_id = "293ef6f4-5d20-44ea-a460-e1844d9cb388"; // TODO: replace with logged-in user's family id
 
   const {
     first_name,
@@ -259,7 +252,11 @@ export default function MyProfileClient({
         {/* Posted Jobs */}
         <div className="lg:col-span-12">
           <Card title="Posted Jobs">
-            <PostedJobGrid jobs={postedJobs} />
+            <PostedJobGrid
+              jobs={postedJobs}
+              page={page}
+              totalPages={totalPages}
+            />
           </Card>
         </div>
       </div>

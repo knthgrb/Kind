@@ -10,14 +10,16 @@ import {
   categories,
   howItWorksSteps,
   benefitsList,
-  locations,
-  jobTypes,
-  payTypes,
-  latestJobs,
   pricingList,
   faqs,
 } from "@/lib/marketing/homeData";
-export default function Home() {
+import { fetchLatestJobs } from "@/services/jobs/(kindTao)/latestJobs";
+import { fetchJobFilterOptions } from "@/services/jobs/fetchActiveJobs";
+export default async function Home() {
+  const [latestJobs, { locations, jobTypes, payTypes }] = await Promise.all([
+    fetchLatestJobs(),
+    fetchJobFilterOptions(),
+  ]);
   return (
     <div>
       <Hero />

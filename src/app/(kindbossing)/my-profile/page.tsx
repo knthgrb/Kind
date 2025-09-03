@@ -1,19 +1,31 @@
 import { redirect } from "next/navigation";
-import { getBossingProfile } from "@/services/profile/kindBossing/getKindBossingProfile";
-import MyProfileClient from "./_components/MyProfileClient";
-import { fetchUserWithJobs } from "@/services/jobs/(kindBossing)/fetchUserWithJobs";
+import { fetchUserProfile } from "@/services/profile/fetchUserProfile";
+import { fetchPaginatedKindBossingPosts } from "@/services/jobs/(kindBossing)/fetchPaginatedKindBossingPosts";
+import TestMyProfileClient from "./_components/MyProfileClient";
 
-export default async function MyProfilePage() {
-  const profileData = await getBossingProfile();
+export default async function MyProfilePage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  const profileData = await fetchUserProfile();
+  if (!profileData) redirect("/login");
 
-  if (!profileData || !profileData.profile) {
-    redirect("/login");
-  }
+  const page = Number(searchParams?.page) || 1;
+  const pageSize = 8;
 
-  const data = await fetchUserWithJobs();
+  const { jobs, total } = await fetchPaginatedKindBossingPosts(
+    profileData.id,
+    page,
+    pageSize
+  );
 
-  const user = profileData.profile;
-  const postedJobs = data?.jobs ?? [];
-
-  return <MyProfileClient user={user} postedJobs={postedJobs} />;
+  return (
+    <TestMyProfileClient
+      user={profileData}
+      postedJobs={jobs}
+      page={page}
+      totalPages={Math.ceil(total / pageSize)}
+    />
+  );
 }

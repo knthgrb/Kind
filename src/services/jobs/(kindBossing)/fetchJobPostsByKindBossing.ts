@@ -1,10 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 
-export async function fetchJobPosts(userId: string) {
+export async function fetchJobPostsByKindBossing(userId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from("job_posts")
+    .from("active_job_posts")
     .select("*")
     .eq("family_id", userId);
 
