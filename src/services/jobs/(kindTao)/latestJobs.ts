@@ -16,10 +16,11 @@ export async function fetchLatestJobs(
   const supabase = await createClient();
 
   let query = supabase
-    .from("active_job_posts")
+    .from("job_posts")
     .select(
       "id, family_id, title, description, job_type, location, salary_min, salary_max, salary_rate, created_at, updated_at"
     )
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(filters?.limit ?? 8);
 
