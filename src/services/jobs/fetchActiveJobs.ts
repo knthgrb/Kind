@@ -16,7 +16,7 @@ export async function fetchActiveJobs(
   const supabase = await createClient();
 
   let query = supabase
-    .from("active_job_posts")
+    .from("job_posts")
     .select(
       "id, family_id, title, description, job_type, location, salary_min, salary_max, salary_rate, created_at, updated_at"
     )
