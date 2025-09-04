@@ -11,6 +11,7 @@ import { KindBossingProfile } from "@/types/kindBossingProfile";
 
 type MyProfileClientProps = {
   user: KindBossingProfile;
+  familyId: string;
   postedJobs: JobPost[];
   page: number;
   totalPages: number;
@@ -18,6 +19,7 @@ type MyProfileClientProps = {
 
 export default function MyProfileClient({
   user,
+  familyId,
   postedJobs,
   page,
   totalPages,
@@ -33,8 +35,6 @@ export default function MyProfileClient({
     province: user.province || "",
     postal_code: user.postal_code || "",
   });
-
-  const family_id = "293ef6f4-5d20-44ea-a460-e1844d9cb388"; // TODO: replace with logged-in user's family id
 
   const {
     first_name,
@@ -254,6 +254,7 @@ export default function MyProfileClient({
           <Card title="Posted Jobs">
             <PostedJobGrid
               jobs={postedJobs}
+              familyId={familyId}
               page={page}
               totalPages={totalPages}
             />

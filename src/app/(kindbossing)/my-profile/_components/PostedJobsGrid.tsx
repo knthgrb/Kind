@@ -7,12 +7,14 @@ import { useRouter } from "next/navigation";
 
 type PostedJobsGridProps = {
   jobs: JobPost[];
+  familyId: string;
   page: number;
   totalPages: number;
 };
 
 export default function PostedJobsGrid({
   jobs,
+  familyId,
   page,
   totalPages,
 }: PostedJobsGridProps) {
