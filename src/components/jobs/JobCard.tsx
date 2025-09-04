@@ -2,32 +2,18 @@ import Image from "next/image";
 import { SlLocationPin } from "react-icons/sl";
 import { JobPost } from "@/types/jobPosts";
 import { salaryFormatter, salaryRateFormatter } from "@/utils/salaryFormatter";
-import { useState, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
 
-type Props = {
+type JobCardProps = {
   job: JobPost;
+  isAuthor?: boolean;
+  onAction?: () => void;
 };
 
-export default function JobCard({ job }: Props) {
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    async function getUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUserId(user?.id ?? null);
-      console.log("Logged-in user:", user?.id);
-      console.log("Logged-in user data:", user?.user_metadata);
-      console.log("Logged-in user role:", user?.user_metadata?.role);
-    }
-
-    getUser();
-  }, []);
-
+export default function JobCard({
+  job,
+  isAuthor = false,
+  onAction,
+}: JobCardProps) {
   return (
     <div className="flex flex-col p-4 rounded-2xl bg-white border border-[#E0E6F7] transition-all w-full h-auto">
       <div className="flex mb-3">
@@ -69,8 +55,16 @@ export default function JobCard({ job }: Props) {
             {salaryRateFormatter(job.salary_rate)}
           </span>
         </p>
-        <button className="flex items-center justify-center py-2 px-4 mr-[3px] bg-[#CC0000] text-white rounded-lg text-lg hover:bg-red-700">
-          <span className="text-[10px]">Apply Now</span>
+        <button
+          type="button"
+          onClick={onAction}
+          className="flex items-center justify-center py-2 px-4 bg-[#CC0000] text-white rounded-lg text-lg hover:bg-red-700"
+        >
+          {isAuthor ? (
+            <span className="text-[10px]">View Details</span>
+          ) : (
+            <span className="text-[10px]">Apply Now</span>
+          )}
         </button>
       </div>
     </div>

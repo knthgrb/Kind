@@ -7,7 +7,11 @@ import StepperFooter from "@/components/StepperFooter";
 import Dropdown from "@/components/dropdown/Dropdown";
 import { postJob } from "@/services/jobs/(kindBossing)/postJobService";
 
-export default function PostJobClient() {
+type PostJobClientProps = {
+  familyId: string;
+};
+
+export default function PostJobClient({ familyId }: PostJobClientProps) {
   const router = useRouter();
 
   // form state
@@ -50,11 +54,10 @@ export default function PostJobClient() {
     }
 
     try {
-      const family_id = "293ef6f4-5d20-44ea-a460-e1844d9cb388"; // TODO: replace with logged-in user's family id
       const numericAmount = parseInt(amount.replace(/[₱,]/g, ""), 10);
 
       const job = await postJob({
-        family_id,
+        family_id: familyId,
         title,
         description,
         location: location,

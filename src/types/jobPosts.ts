@@ -1,4 +1,11 @@
 export type SalaryRate = "Per Hour" | "Per Day" | "Per Week" | "Per Month";
+export type JobType =
+  | "yaya"
+  | "driver"
+  | "housekeeper"
+  | "caregiver"
+  | "cook"
+  | "all_around";
 
 export type JobPostInput = {
   family_id: string;
@@ -15,7 +22,7 @@ export type JobPost = {
   family_id: string;
   title: string;
   description: string;
-  job_type: string;
+  job_type: JobType | null;
   location: string;
   salary_min: number;
   salary_max: number;

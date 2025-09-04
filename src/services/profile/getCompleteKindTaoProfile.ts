@@ -18,7 +18,8 @@ export async function getCompleteKindTaoProfile(): Promise<UserProfile | null> {
   // Fetch complete user profile with all related data
   const { data, error } = await supabase
     .from("users")
-    .select(`
+    .select(
+      `
       id,
       email,
       first_name,
@@ -70,7 +71,8 @@ export async function getCompleteKindTaoProfile(): Promise<UserProfile | null> {
          file_name,
          uploaded_at
        )
-    `)
+    `
+    )
     .eq("id", user.id)
     .maybeSingle();
 
