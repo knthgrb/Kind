@@ -14,7 +14,7 @@ import type {
 export interface UseChatUIOptions {
   selectedConversationId: string | null;
   autoMarkAsRead?: boolean;
-  autoRefreshConversations?: boolean;
+  // Using realtime subscriptions instead of polling
 }
 
 export interface UseChatUIReturn {
@@ -61,7 +61,6 @@ export interface UseChatUIReturn {
 export function useChatUI({
   selectedConversationId,
   autoMarkAsRead = true,
-  autoRefreshConversations = true,
 }: UseChatUIOptions): UseChatUIReturn {
   const { user } = useAuth();
   const [currentConversationId, setCurrentConversationId] = useState<
@@ -74,9 +73,7 @@ export function useChatUI({
     isLoading: isLoadingConversations,
     error: conversationsError,
     refreshConversations,
-  } = useUserConversations({
-    autoRefresh: autoRefreshConversations,
-  });
+  } = useUserConversations({});
 
   // Get conversation details for header
   const {

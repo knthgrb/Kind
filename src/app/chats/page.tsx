@@ -8,9 +8,7 @@ import { ChatService } from "@/services/chat/chatService";
 export default function ChatsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { conversations, isLoading } = useUserConversations({
-    autoRefresh: false,
-  });
+  const { conversations, isLoading } = useUserConversations({});
 
   // Unified loading state
   const isChatLoading = isLoading;

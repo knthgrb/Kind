@@ -1,19 +1,4 @@
-// Legacy types for existing chat data (can be removed later)
-type Status = "online" | "away" | "offline";
-
-type Participant = {
-  id: number;
-  name: string;
-  image: string;
-  status: Status;
-};
-
-export type LegacyMessage = {
-  id: number;
-  senderId: number;
-  message: string;
-  time: Date;
-};
+// Legacy types removed - using database schema types only
 
 // New types matching database schema
 export type MessageStatus = "sent" | "delivered" | "read";

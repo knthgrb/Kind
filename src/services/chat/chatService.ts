@@ -27,6 +27,16 @@ export class ChatService {
   private static cacheExpiry = 5 * 60 * 1000; // 5 minutes
   private static cacheTimestamps = new Map<string, number>();
 
+  // Conversation cache for frequently accessed data
+  private static conversationCache = new Map<string, any>();
+  private static conversationCacheExpiry = 2 * 60 * 1000; // 2 minutes
+  private static conversationCacheTimestamps = new Map<string, number>();
+
+  // Last sent conversation cache
+  private static lastSentCache = new Map<string, any>();
+  private static lastSentCacheExpiry = 30 * 1000; // 30 seconds
+  private static lastSentCacheTimestamps = new Map<string, number>();
+
   /**
    * Get cached user or fetch from database
    */
@@ -367,9 +377,99 @@ export class ChatService {
   }
 
   /**
-   * Get the conversation where the user last sent a message
+   * Get unread counts for multiple conversations in a single query
+   */
+  static async getUnreadCountsForConversations(
+    conversationIds: string[],
+    userId: string
+  ) {
+    if (conversationIds.length === 0) return new Map();
+
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("conversation_id")
+      .in("conversation_id", conversationIds)
+      .neq("sender_id", userId)
+      .is("read_at", null);
+
+    if (error) {
+      console.error("Error fetching unread counts:", error);
+      return new Map();
+    }
+
+    // Count messages per conversation
+    const counts = new Map<string, number>();
+    conversationIds.forEach((id) => counts.set(id, 0));
+
+    data?.forEach((message) => {
+      const current = counts.get(message.conversation_id) || 0;
+      counts.set(message.conversation_id, current + 1);
+    });
+
+    return counts;
+  }
+
+  /**
+   * Get latest messages for multiple conversations in a single query
+   */
+  static async getLatestMessagesForConversations(conversationIds: string[]) {
+    if (conversationIds.length === 0) return new Map();
+
+    const supabase = createClient();
+
+    // Use a window function to get the latest message per conversation
+    const { data, error } = await supabase
+      .from("messages")
+      .select(
+        `
+        conversation_id,
+        id,
+        content,
+        sender_id,
+        created_at,
+        message_type,
+        file_url,
+        status,
+        read_at
+      `
+      )
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching latest messages:", error);
+      return new Map();
+    }
+
+    // Group by conversation and get the latest for each
+    const latestMessages = new Map();
+    const processed = new Set();
+
+    data?.forEach((message) => {
+      if (!processed.has(message.conversation_id)) {
+        latestMessages.set(message.conversation_id, message);
+        processed.add(message.conversation_id);
+      }
+    });
+
+    return latestMessages;
+  }
+
+  /**
+   * Get the conversation where the user last sent a message (with caching)
    */
   static async getLastSentConversation(userId: string) {
+    const now = Date.now();
+    const cached = this.lastSentCache.get(userId);
+    const timestamp = this.lastSentCacheTimestamps.get(userId);
+
+    // Return cached data if still valid
+    if (cached && timestamp && now - timestamp < this.lastSentCacheExpiry) {
+      return cached;
+    }
+
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -382,10 +482,17 @@ export class ChatService {
 
     if (error) {
       if (error.code === "PGRST116") {
+        // Cache null result to prevent repeated queries
+        this.lastSentCache.set(userId, null);
+        this.lastSentCacheTimestamps.set(userId, now);
         return null;
       }
       throw error;
     }
+
+    // Cache the result
+    this.lastSentCache.set(userId, data);
+    this.lastSentCacheTimestamps.set(userId, now);
 
     return data;
   }

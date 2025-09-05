@@ -30,6 +30,13 @@ export class RealtimeService {
       onError?: (error: any) => void;
     }
   > = new Map();
+  private static multipleCallbacks: Map<
+    string,
+    Set<{
+      onMessage: (message: ChatMessage) => void;
+      onError?: (error: any) => void;
+    }>
+  > = new Map();
   private static retryAttempts: Map<string, number> = new Map();
   private static maxRetries = 3;
 
@@ -48,21 +55,31 @@ export class RealtimeService {
     // Check if channel already exists and is active
     const existingChannel = this.channels.get(conversationId);
     if (existingChannel && existingChannel.state === "joined") {
-      // Update callbacks for existing channel
-      this.subscriptionCallbacks.set(conversationId, { onMessage, onError });
+      // Add callback to multiple callbacks set
+      if (!this.multipleCallbacks.has(conversationId)) {
+        this.multipleCallbacks.set(conversationId, new Set());
+      }
+      this.multipleCallbacks.get(conversationId)!.add({ onMessage, onError });
       return Promise.resolve(existingChannel);
     }
 
     // Check if there's already a pending subscription
     const pendingSubscription = this.pendingSubscriptions.get(conversationId);
     if (pendingSubscription) {
-      // Update callbacks and return existing promise
-      this.subscriptionCallbacks.set(conversationId, { onMessage, onError });
+      // Add callback to multiple callbacks set
+      if (!this.multipleCallbacks.has(conversationId)) {
+        this.multipleCallbacks.set(conversationId, new Set());
+      }
+      this.multipleCallbacks.get(conversationId)!.add({ onMessage, onError });
       return pendingSubscription;
     }
 
     // Store callbacks
     this.subscriptionCallbacks.set(conversationId, { onMessage, onError });
+    if (!this.multipleCallbacks.has(conversationId)) {
+      this.multipleCallbacks.set(conversationId, new Set());
+    }
+    this.multipleCallbacks.get(conversationId)!.add({ onMessage, onError });
 
     // Unsubscribe from existing channel if it exists but is not active
     if (existingChannel) {
@@ -74,10 +91,25 @@ export class RealtimeService {
       const channel = supabase
         .channel(channelName)
         .on("broadcast", { event: "message" }, (payload) => {
+          const message = payload.payload as ChatMessage;
+          console.log(
+            "📨 Broadcast received for conversation:",
+            conversationId,
+            message
+          );
+
+          // Call all callbacks for this conversation
           const callbacks = this.subscriptionCallbacks.get(conversationId);
           if (callbacks) {
-            const message = payload.payload as ChatMessage;
             callbacks.onMessage(message);
+          }
+
+          // Call multiple callbacks
+          const multipleCallbacks = this.multipleCallbacks.get(conversationId);
+          if (multipleCallbacks) {
+            multipleCallbacks.forEach((callback) => {
+              callback.onMessage(message);
+            });
           }
         })
         .subscribe((status, err) => {
@@ -88,6 +120,16 @@ export class RealtimeService {
             );
             const callbacks = this.subscriptionCallbacks.get(conversationId);
             callbacks?.onError?.(err);
+
+            // Call error callbacks for all multiple callbacks
+            const multipleCallbacks =
+              this.multipleCallbacks.get(conversationId);
+            if (multipleCallbacks) {
+              multipleCallbacks.forEach((callback) => {
+                callback.onError?.(err);
+              });
+            }
+
             this.pendingSubscriptions.delete(conversationId);
             reject(err);
             return;
@@ -182,28 +224,42 @@ export class RealtimeService {
     message: ChatMessage
   ): Promise<void> {
     const channelName = `conversation:${conversationId}`;
+    console.log("📡 RealtimeService.sendMessage called:", {
+      conversationId,
+      message,
+    });
 
     // Get the existing subscribed channel
     const existingChannel = this.channels.get(conversationId);
+    console.log("📡 Existing channel:", existingChannel?.state);
 
     if (!existingChannel) {
+      console.warn(
+        "❌ No existing channel found for conversation:",
+        conversationId
+      );
       return; // Don't throw error, just skip broadcasting
     }
 
     // Check if channel is ready (with shorter timeout)
     const isReady = await this.ensureChannelReady(conversationId);
+    console.log("📡 Channel ready:", isReady);
+
     if (!isReady) {
+      console.warn("❌ Channel not ready for conversation:", conversationId);
       return; // Don't throw error, just skip broadcasting
     }
 
     try {
+      console.log("📡 Sending broadcast message...");
       await existingChannel.send({
         type: "broadcast",
         event: "message",
         payload: message,
       });
+      console.log("✅ Broadcast message sent successfully");
     } catch (error) {
-      // Silent error handling
+      console.error("❌ Broadcast message failed:", error);
     }
   }
 
@@ -317,6 +373,7 @@ export class RealtimeService {
     // Clean up pending subscriptions, callbacks, and retry attempts
     this.pendingSubscriptions.delete(conversationId);
     this.subscriptionCallbacks.delete(conversationId);
+    this.multipleCallbacks.delete(conversationId);
     this.retryAttempts.delete(conversationId);
   }
 
@@ -334,7 +391,35 @@ export class RealtimeService {
     this.channels.clear();
     this.pendingSubscriptions.clear();
     this.subscriptionCallbacks.clear();
+    this.multipleCallbacks.clear();
     this.retryAttempts.clear();
+  }
+
+  /**
+   * Cleanup expired subscriptions to prevent memory leaks
+   */
+  static cleanupExpiredSubscriptions() {
+    const now = Date.now();
+    const maxAge = 10 * 60 * 1000; // 10 minutes
+
+    // Clean up old retry attempts
+    this.retryAttempts.forEach((attempts, conversationId) => {
+      if (attempts > this.maxRetries) {
+        this.retryAttempts.delete(conversationId);
+      }
+    });
+
+    // Clean up stale pending subscriptions
+    this.pendingSubscriptions.forEach((promise, conversationId) => {
+      // If a subscription has been pending for too long, clean it up
+      if (this.channels.has(conversationId)) {
+        const channel = this.channels.get(conversationId);
+        if (channel && channel.state === "errored") {
+          this.channels.delete(conversationId);
+          this.pendingSubscriptions.delete(conversationId);
+        }
+      }
+    });
   }
 
   /**
@@ -351,6 +436,7 @@ export class RealtimeService {
     this.channels.clear();
     this.pendingSubscriptions.clear();
     this.subscriptionCallbacks.clear();
+    this.multipleCallbacks.clear();
     this.retryAttempts.clear();
   }
 

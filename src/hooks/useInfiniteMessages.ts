@@ -48,6 +48,10 @@ export function useInfiniteMessages({
   const subscriptionRef = useRef<boolean>(false);
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentConversationIdRef = useRef<string | null>(null);
+  const messagesContainerRef = useRef<HTMLElement | null>(null);
+  const sentinelElementRef = useRef<HTMLDivElement | null>(null);
+  const lastLoadTimeRef = useRef<number>(0);
+  const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Convert database message to ChatMessage format
   const convertToChatMessage = useCallback((message: any): ChatMessage => {
@@ -107,8 +111,13 @@ export function useInfiniteMessages({
     isLoadingRef.current = true;
     setIsLoadingMore(true);
 
-    const messagesContainer = document.querySelector(".overflow-y-auto");
+    // Use the stored container ref or fallback to querySelector
+    const messagesContainer =
+      messagesContainerRef.current ||
+      (document.querySelector(".overflow-y-auto") as HTMLElement);
     if (!messagesContainer) {
+      setIsLoadingMore(false);
+      isLoadingRef.current = false;
       return;
     }
 
@@ -136,7 +145,8 @@ export function useInfiniteMessages({
       setMessages((prev) => {
         const newMessages = [...chatMessages, ...prev];
 
-        setTimeout(() => {
+        // Use requestAnimationFrame for smoother scroll position updates
+        requestAnimationFrame(() => {
           if (messagesContainer) {
             const newScrollHeight = messagesContainer.scrollHeight;
             const heightDifference = newScrollHeight - currentScrollHeight;
@@ -148,9 +158,13 @@ export function useInfiniteMessages({
               newScrollTop = currentScrollTop + heightDifference;
             }
 
-            messagesContainer.scrollTop = newScrollTop;
+            // Smooth scroll to maintain position
+            messagesContainer.scrollTo({
+              top: newScrollTop,
+              behavior: "instant",
+            });
           }
-        }, 100);
+        });
 
         return newMessages;
       });
@@ -167,15 +181,34 @@ export function useInfiniteMessages({
 
   // Handle realtime message events
   const handleRealtimeMessage = useCallback((message: ChatMessage) => {
+    console.log("🔥 Realtime message received:", message);
     setMessages((prevMessages) => {
       const messageExists = prevMessages.some((msg) => msg.id === message.id);
       if (!messageExists) {
+        console.log("✅ Adding new message to state");
         const newMessages = [...prevMessages, message];
         return newMessages;
+      } else {
+        console.log("⚠️ Message already exists, skipping");
       }
       return prevMessages;
     });
   }, []);
+
+  // Debounced load function to prevent multiple simultaneous loads
+  const debouncedLoadMore = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastLoad = now - lastLoadTimeRef.current;
+
+    // Prevent loading if already loading or loaded recently (within 1 second)
+    if (isLoadingRef.current || timeSinceLastLoad < 1000) {
+      console.log("Load more blocked - already loading or too recent");
+      return;
+    }
+
+    lastLoadTimeRef.current = now;
+    loadMoreMessages();
+  }, [loadMoreMessages]);
 
   // Send message function
   const sendMessage = useCallback(
@@ -204,6 +237,7 @@ export function useInfiniteMessages({
           profile_image_url: (user as any).profile_image_url || null,
         });
 
+        console.log("💾 Adding message to local state:", chatMessage);
         setMessages((prevMessages) => {
           const newMessages = [...prevMessages, chatMessage];
           onMessage?.(newMessages);
@@ -211,9 +245,11 @@ export function useInfiniteMessages({
         });
 
         try {
+          console.log("📡 Broadcasting message via realtime:", chatMessage);
           await RealtimeService.sendMessage(conversationId, chatMessage);
+          console.log("✅ Message broadcast successful");
         } catch (broadcastError) {
-          // Silent error handling
+          console.error("❌ Message broadcast failed:", broadcastError);
         }
 
         try {
@@ -233,30 +269,88 @@ export function useInfiniteMessages({
   // Intersection Observer for infinite loading
   const loadMoreRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
-      if (isLoadingRef.current) return;
+      console.log("loadMoreRefCallback called:", {
+        node,
+        hasMore,
+        isLoading: isLoadingRef.current,
+      });
 
+      // Store the ref
+      loadMoreRef.current = node;
+      sentinelElementRef.current = node;
+
+      // Disconnect previous observer
       if (observerRef.current) {
         observerRef.current.disconnect();
+        observerRef.current = null;
       }
 
-      if (node) {
-        observerRef.current = new IntersectionObserver(
-          (entries) => {
-            const entry = entries[0];
-            if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
-              loadMoreMessages();
+      if (node && hasMore) {
+        // Find the messages container (the scrollable parent)
+        const messagesContainer = node.closest(
+          ".overflow-y-auto"
+        ) as HTMLElement;
+        messagesContainerRef.current = messagesContainer;
+
+        console.log("Setting up observer with container:", messagesContainer);
+
+        if (messagesContainer) {
+          observerRef.current = new IntersectionObserver(
+            (entries) => {
+              const entry = entries[0];
+              console.log("Intersection Observer callback:", {
+                isIntersecting: entry.isIntersecting,
+                hasMore,
+                isLoading: isLoadingRef.current,
+                intersectionRatio: entry.intersectionRatio,
+              });
+
+              if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
+                console.log(
+                  "Intersection Observer triggered - loading more messages"
+                );
+                debouncedLoadMore();
+              }
+            },
+            {
+              threshold: 0.1,
+              rootMargin: "100px", // Trigger 100px before the element comes into view
+              root: messagesContainer, // Use the scrollable container as root
             }
-          },
-          {
-            threshold: 0.1,
-            rootMargin: "50px",
-          }
-        );
-        observerRef.current.observe(node);
+          );
+          observerRef.current.observe(node);
+          console.log("Observer set up and observing node");
+        } else {
+          console.log("No messages container found");
+        }
       }
     },
     [hasMore, loadMoreMessages]
   );
+
+  // Function to set up observer
+  const setupObserver = useCallback(() => {
+    const element = loadMoreRef.current || sentinelElementRef.current;
+    if (element && hasMore) {
+      console.log("Setting up observer via setupObserver function");
+      loadMoreRefCallback(element);
+    }
+  }, [hasMore, loadMoreRefCallback]);
+
+  // Set up observer when the ref is available
+  useEffect(() => {
+    setupObserver();
+
+    // Retry after a short delay if observer wasn't set up
+    const retryTimeout = setTimeout(() => {
+      if (!observerRef.current && hasMore) {
+        console.log("Retrying observer setup after delay");
+        setupObserver();
+      }
+    }, 500);
+
+    return () => clearTimeout(retryTimeout);
+  }, [setupObserver, hasMore]);
 
   // Load initial messages when conversation changes
   useEffect(() => {
@@ -268,6 +362,60 @@ export function useInfiniteMessages({
       currentOffset.current = 0;
     }
   }, [conversationId, loadInitialMessages]);
+
+  // Re-observe when hasMore changes or when messages change
+  useEffect(() => {
+    if (loadMoreRef.current && hasMore) {
+      console.log("Setting up observer via useEffect");
+      loadMoreRefCallback(loadMoreRef.current);
+    }
+  }, [hasMore, loadMoreRefCallback]);
+
+  // Debug: Log when loadMoreRef changes
+  useEffect(() => {
+    console.log("loadMoreRef changed:", loadMoreRef.current);
+  }, [loadMoreRef.current]);
+
+  // Fallback: Add scroll event listener as backup (only if intersection observer fails)
+  useEffect(() => {
+    const messagesContainer = messagesContainerRef.current;
+    if (!messagesContainer || !hasMore) return;
+
+    // Only use scroll fallback if intersection observer is not working
+    const hasWorkingObserver = observerRef.current !== null;
+    if (hasWorkingObserver) {
+      console.log("Intersection observer is working, skipping scroll fallback");
+      return;
+    }
+
+    console.log("Setting up scroll fallback");
+
+    const handleScroll = () => {
+      // Clear existing timeout
+      if (scrollDebounceRef.current) {
+        clearTimeout(scrollDebounceRef.current);
+      }
+
+      // Debounce scroll events
+      scrollDebounceRef.current = setTimeout(() => {
+        const scrollTop = messagesContainer.scrollTop;
+        const sentinel = loadMoreRef.current || sentinelElementRef.current;
+
+        if (sentinel && scrollTop <= 50 && hasMore && !isLoadingRef.current) {
+          console.log("Scroll fallback triggered - loading more messages");
+          debouncedLoadMore();
+        }
+      }, 100); // 100ms debounce
+    };
+
+    messagesContainer.addEventListener("scroll", handleScroll);
+    return () => {
+      messagesContainer.removeEventListener("scroll", handleScroll);
+      if (scrollDebounceRef.current) {
+        clearTimeout(scrollDebounceRef.current);
+      }
+    };
+  }, [hasMore, debouncedLoadMore]);
 
   // Set up realtime subscription with debouncing
   useEffect(() => {
@@ -307,16 +455,27 @@ export function useInfiniteMessages({
       currentConversationIdRef.current = conversationId;
       subscriptionRef.current = true;
 
+      console.log(
+        "🚀 Setting up realtime subscription for conversation:",
+        conversationId
+      );
       RealtimeService.subscribeToMessages(
         conversationId,
         handleRealtimeMessage,
         (error) => {
+          console.error("❌ Realtime subscription error:", error);
           // Only set error if this is still the current conversation
           if (conversationId === currentConversationIdRef.current) {
             setError(error);
           }
         }
-      );
+      )
+        .then(() => {
+          console.log("✅ Realtime subscription established");
+        })
+        .catch((err) => {
+          console.error("❌ Failed to establish realtime subscription:", err);
+        });
     }, 100); // 100ms debounce
 
     return () => {

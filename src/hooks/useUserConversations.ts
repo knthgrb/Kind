@@ -5,8 +5,7 @@ import { ChatService } from "@/services/chat/chatService";
 import { useAuth } from "./useAuth";
 import type { ConversationWithDetails } from "@/types/chat";
 export interface UseUserConversationsOptions {
-  autoRefresh?: boolean;
-  refreshInterval?: number;
+  // Using realtime subscriptions instead of polling
 }
 
 export interface UseUserConversationsReturn {
@@ -16,10 +15,7 @@ export interface UseUserConversationsReturn {
   refreshConversations: () => Promise<void>;
 }
 
-export function useUserConversations({
-  autoRefresh = true,
-  refreshInterval = 30000, // 30 seconds
-}: UseUserConversationsOptions = {}): UseUserConversationsReturn {
+export function useUserConversations({}: UseUserConversationsOptions = {}): UseUserConversationsReturn {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationWithDetails[]>(
     []
@@ -56,16 +52,7 @@ export function useUserConversations({
     loadConversations();
   }, [loadConversations]);
 
-  // Auto-refresh conversations
-  useEffect(() => {
-    if (!autoRefresh || !user?.id) return;
-
-    const interval = setInterval(() => {
-      loadConversations();
-    }, refreshInterval);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, loadConversations, user?.id]);
+  // Auto-refresh removed - using realtime subscriptions instead
 
   return {
     conversations,

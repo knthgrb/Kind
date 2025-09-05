@@ -25,6 +25,7 @@ export interface UseSidebarMonitoringReturn {
     conversationId: string,
     message: any
   ) => void;
+  isInitialDataLoading: boolean;
 }
 
 export function useSidebarMonitoring({
@@ -37,6 +38,12 @@ export function useSidebarMonitoring({
     unreadCounts: new Map(),
     conversationTimestamps: new Map(),
   });
+  const [isInitialDataLoading, setIsInitialDataLoading] = useState(false);
+
+  // Cache to prevent redundant API calls
+  const lastLoadTimeRef = useRef<number>(0);
+  const lastConversationIdsRef = useRef<string>("");
+  const CACHE_DURATION = 5000; // 5 seconds cache
 
   // Track active subscriptions
   const subscriptionsRef = useRef<Map<string, any>>(new Map());
@@ -50,20 +57,40 @@ export function useSidebarMonitoring({
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
 
-  // Load initial data for all conversations (lightweight - only latest message)
+  // Load initial data for all conversations (optimized - batch queries)
   const loadInitialData = useCallback(async () => {
     if (conversations.length === 0 || !user?.id) return;
 
+    const conversationIds = conversations.map((c) => c.id);
+    const conversationIdsKey = conversationIds.sort().join(",");
+    const now = Date.now();
+
+    // Check cache - skip if same conversations and within cache duration
+    if (
+      lastConversationIdsRef.current === conversationIdsKey &&
+      now - lastLoadTimeRef.current < CACHE_DURATION
+    ) {
+      return;
+    }
+
+    setIsInitialDataLoading(true);
     const lastMessagesMap = new Map<string, string>();
     const timestampsMap = new Map<string, number>();
     const unreadCountsMap = new Map<string, number>();
 
-    // Process all conversations in parallel - but only fetch latest message
-    const promises = conversations.map(async (conversation) => {
-      try {
-        const latestMessage = await ChatService.fetchLatestMessage(
-          conversation.id
-        );
+    try {
+      // Batch fetch latest messages and unread counts
+      const [latestMessages, unreadCounts] = await Promise.all([
+        ChatService.getLatestMessagesForConversations(conversationIds),
+        ChatService.getUnreadCountsForConversations(
+          conversationIds.filter((id) => id !== selectedConversationId),
+          user.id
+        ),
+      ]);
+
+      // Process the results
+      conversations.forEach((conversation) => {
+        const latestMessage = latestMessages.get(conversation.id);
 
         if (latestMessage) {
           const isFromCurrentUser = latestMessage.sender_id === user.id;
@@ -74,56 +101,65 @@ export function useSidebarMonitoring({
             conversation.id,
             new Date(latestMessage.created_at).getTime()
           );
-
-          // Get unread count only if not currently selected
-          if (conversation.id !== selectedConversationId) {
-            try {
-              const unreadCount = await ChatService.getUnreadCount(
-                conversation.id,
-                user.id
-              );
-              unreadCountsMap.set(conversation.id, unreadCount);
-            } catch (error) {
-              console.error(`Error fetching unread count:`, error);
-              unreadCountsMap.set(conversation.id, 0);
-            }
-          } else {
-            unreadCountsMap.set(conversation.id, 0);
-          }
         } else {
           lastMessagesMap.set(conversation.id, "No messages yet");
           timestampsMap.set(
             conversation.id,
             new Date(conversation.created_at).getTime()
           );
-          unreadCountsMap.set(conversation.id, 0);
         }
-      } catch (error) {
-        console.error(
-          `Error loading data for conversation ${conversation.id}:`,
-          error
-        );
+
+        // Set unread count (0 for selected conversation, fetched count for others)
+        if (conversation.id === selectedConversationId) {
+          unreadCountsMap.set(conversation.id, 0);
+        } else {
+          unreadCountsMap.set(
+            conversation.id,
+            unreadCounts.get(conversation.id) || 0
+          );
+        }
+      });
+
+      setSidebarData({
+        lastMessages: lastMessagesMap,
+        unreadCounts: unreadCountsMap,
+        conversationTimestamps: timestampsMap,
+      });
+
+      // Update cache
+      lastLoadTimeRef.current = now;
+      lastConversationIdsRef.current = conversationIdsKey;
+    } catch (error) {
+      console.error("Error loading sidebar data:", error);
+
+      // Fallback to individual conversation data
+      conversations.forEach((conversation) => {
         lastMessagesMap.set(conversation.id, "No messages yet");
         timestampsMap.set(
           conversation.id,
           new Date(conversation.created_at).getTime()
         );
         unreadCountsMap.set(conversation.id, 0);
-      }
-    });
+      });
 
-    await Promise.all(promises);
-
-    setSidebarData({
-      lastMessages: lastMessagesMap,
-      unreadCounts: unreadCountsMap,
-      conversationTimestamps: timestampsMap,
-    });
+      setSidebarData({
+        lastMessages: lastMessagesMap,
+        unreadCounts: unreadCountsMap,
+        conversationTimestamps: timestampsMap,
+      });
+    } finally {
+      setIsInitialDataLoading(false);
+    }
   }, [conversations, user?.id, selectedConversationId]);
 
   // Subscribe to real-time updates for all conversations
   const subscribeToAllConversations = useCallback(async () => {
     if (conversations.length === 0 || !user?.id) return;
+
+    console.log(
+      "🔄 Setting up sidebar subscriptions for conversations:",
+      conversations.map((c) => c.id)
+    );
 
     // Clean up existing subscriptions
     subscriptionsRef.current.forEach((subscription) => {
@@ -136,17 +172,33 @@ export function useSidebarMonitoring({
     // Subscribe to all conversations
     const subscriptionPromises = conversations.map(async (conversation) => {
       try {
+        console.log(
+          `📡 Subscribing sidebar to conversation: ${conversation.id}`
+        );
         const channel = await RealtimeService.subscribeToMessages(
           conversation.id,
           (message) => {
+            console.log(
+              `📨 Sidebar received message for ${conversation.id}:`,
+              message
+            );
+
             // Check if we've already processed this message
             if (processedMessagesRef.current.has(message.id)) {
+              console.log(
+                `⚠️ Message ${message.id} already processed, skipping`
+              );
               return;
             }
             processedMessagesRef.current.add(message.id);
 
             const messageTime = new Date(message.createdAt).getTime();
             const isFromCurrentUser = message.user.id === user.id;
+
+            console.log(`📝 Updating sidebar for ${conversation.id}:`, {
+              isFromCurrentUser,
+              isSelected: conversation.id === selectedConversationIdRef.current,
+            });
 
             // Update sidebar data
             setSidebarData((prev) => {
@@ -169,6 +221,11 @@ export function useSidebarMonitoring({
               ) {
                 const currentCount = newUnreadCounts.get(conversation.id) || 0;
                 newUnreadCounts.set(conversation.id, currentCount + 1);
+                console.log(
+                  `🔢 Updated unread count for ${conversation.id}: ${
+                    currentCount + 1
+                  }`
+                );
               }
 
               return {
@@ -180,22 +237,26 @@ export function useSidebarMonitoring({
           },
           (error) => {
             console.error(
-              `Error in subscription for conversation ${conversation.id}:`,
+              `❌ Error in sidebar subscription for conversation ${conversation.id}:`,
               error
             );
           }
         );
 
         subscriptionsRef.current.set(conversation.id, channel);
+        console.log(
+          `✅ Sidebar subscription established for ${conversation.id}`
+        );
       } catch (error) {
         console.error(
-          `Error subscribing to conversation ${conversation.id}:`,
+          `❌ Error subscribing sidebar to conversation ${conversation.id}:`,
           error
         );
       }
     });
 
     await Promise.all(subscriptionPromises);
+    console.log("✅ All sidebar subscriptions completed");
   }, [conversations, user?.id]);
 
   // Update sidebar data from external source (called by main chat hook)
@@ -294,7 +355,7 @@ export function useSidebarMonitoring({
     await loadInitialData();
   }, [loadInitialData]);
 
-  // Load initial data when conversations change
+  // Load initial data when conversations change (optimized dependencies)
   const hasLoadedRef = useRef(false);
   const lastConversationsRef = useRef<string>("");
 
@@ -313,7 +374,7 @@ export function useSidebarMonitoring({
       lastConversationsRef.current = conversationsKey;
       loadInitialData();
     }
-  }, [conversations, user?.id, selectedConversationId]);
+  }, [conversations, loadInitialData]); // Removed user?.id and selectedConversationId from dependencies
 
   // Subscribe to all conversations when they change
   const lastSubscriptionKeyRef = useRef<string>("");
@@ -355,5 +416,6 @@ export function useSidebarMonitoring({
     refreshSidebar,
     updateSidebarData,
     updateSelectedConversationSidebar,
+    isInitialDataLoading,
   };
 }

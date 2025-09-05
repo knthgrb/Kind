@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { LuSearch } from "react-icons/lu";
 import { FaChevronLeft } from "react-icons/fa";
@@ -9,37 +9,100 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSidebarMonitoring } from "@/hooks/useSidebarMonitoring";
 import { ChatService } from "@/services/chat/chatService";
 import { RealtimeService } from "@/services/chat/realtimeService";
+import { formatTimestamp, getStatusColor } from "@/utils/chatUtils";
 import type {
   ConversationWithDetails,
   User,
   MessageWithUser,
 } from "@/types/chat";
 
-const formatSidebarTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMinutes = Math.floor((now.getTime() - date.getTime()) / 1000 / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
+// Utility functions moved to src/utils/chatUtils.ts
 
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} mins ago`;
-  if (diffHours < 24) return `${diffHours} hrs ago`;
-  return `${diffDays} days ago`;
-};
+// Memoized conversation item component to prevent unnecessary re-renders
+const ConversationItem = memo(
+  ({
+    conversation,
+    currentUser,
+    sidebarData,
+    selectedConversationId,
+    onSelect,
+  }: {
+    conversation: any;
+    currentUser: any;
+    sidebarData: any;
+    selectedConversationId: string | null;
+    onSelect: (id: string) => void;
+  }) => {
+    const otherUser = useMemo(() => {
+      return conversation.matches.kindbossing_id === currentUser.id
+        ? conversation.matches.kindtao
+        : conversation.matches.kindbossing;
+    }, [conversation.matches, currentUser.id]);
 
-// Utility: Format chat timestamp
-const formatChatTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  return `${date.getHours() % 12 || 12}:${String(date.getMinutes()).padStart(
-    2,
-    "0"
-  )} ${date.getHours() >= 12 ? "PM" : "AM"}`;
-};
+    const isActive = selectedConversationId === conversation.id;
+    const unreadCount = sidebarData.unreadCounts.get(conversation.id) || 0;
+    const hasUnread = unreadCount > 0 && !isActive;
+    const lastMessageText =
+      sidebarData.lastMessages.get(conversation.id) || "No messages yet";
+    const lastMessageTimestamp = sidebarData.conversationTimestamps.get(
+      conversation.id
+    )
+      ? new Date(
+          sidebarData.conversationTimestamps.get(conversation.id)!
+        ).toISOString()
+      : conversation.last_message_at;
 
-const getStatusColor = (isOnline: boolean): string => {
-  return isOnline ? "bg-green-500" : "bg-gray-400";
-};
+    return (
+      <div
+        onClick={() => onSelect(conversation.id)}
+        className={`flex items-center p-2 mb-2 cursor-pointer border-b border-[#DCDCE2] hover:bg-gray-200 ${
+          isActive ? "bg-[#f0e7f2]" : ""
+        }`}
+      >
+        <div className="relative">
+          <img
+            src={otherUser.profile_image_url || "/people/user-profile.png"}
+            alt={`${otherUser.first_name} ${otherUser.last_name}`}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+          <span
+            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
+              false // TODO: Implement online status
+            )}`}
+          />
+          {hasUnread && (
+            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {unreadCount}
+            </div>
+          )}
+        </div>
+        <div className="ml-2 flex-1 min-w-0">
+          <h4
+            className={`text-[0.663rem] font-medium text-[#212529] truncate ${
+              hasUnread ? "font-bold" : ""
+            }`}
+          >
+            {`${otherUser.first_name} ${otherUser.last_name}`}
+          </h4>
+          <p
+            className={`text-[0.663rem] text-[#757589] truncate ${
+              hasUnread ? "font-bold" : ""
+            }`}
+          >
+            {lastMessageText}
+          </p>
+        </div>
+        <span className="text-[0.663rem] text-[#757589] ml-1 whitespace-nowrap">
+          {lastMessageTimestamp
+            ? formatTimestamp(lastMessageTimestamp, "sidebar")
+            : ""}
+        </span>
+      </div>
+    );
+  }
+);
+
+ConversationItem.displayName = "ConversationItem";
 
 export default function ChatUI() {
   const { user } = useAuth();
@@ -79,7 +142,6 @@ export default function ChatUI() {
   } = useChatUI({
     selectedConversationId,
     autoMarkAsRead: true,
-    autoRefreshConversations: false, // Disable auto-refresh to prevent auth spikes
   });
 
   // Debug: Log what we're getting from useChatUI
@@ -90,23 +152,35 @@ export default function ChatUI() {
   const isSidebarLoading = isLoadingConversations;
 
   // Use sidebar monitoring hook
-  const { sidebarData, refreshSidebar, updateSelectedConversationSidebar } =
-    useSidebarMonitoring({
-      conversations,
-      selectedConversationId,
-    });
-
-  // Sort conversations by latest message timestamp only
-  const sortedConversations = [...conversations].sort((a, b) => {
-    // Use local timestamp if available, otherwise use database timestamp
-    const aTime =
-      sidebarData.conversationTimestamps.get(a.id) ||
-      new Date(a.last_message_at || a.created_at).getTime();
-    const bTime =
-      sidebarData.conversationTimestamps.get(b.id) ||
-      new Date(b.last_message_at || b.created_at).getTime();
-    return bTime - aTime; // Most recent first
+  const {
+    sidebarData,
+    refreshSidebar,
+    updateSelectedConversationSidebar,
+    isInitialDataLoading,
+  } = useSidebarMonitoring({
+    conversations,
+    selectedConversationId,
   });
+
+  // Only hide full loading screen when both sidebar and chat window have data
+  const shouldShowFullLoading =
+    isLoadingConversations ||
+    (isLoadingMessages && messages.length === 0) ||
+    isInitialDataLoading;
+
+  // Memoize sorted conversations to prevent unnecessary re-sorting
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      // Use local timestamp if available, otherwise use database timestamp
+      const aTime =
+        sidebarData.conversationTimestamps.get(a.id) ||
+        new Date(a.last_message_at || a.created_at).getTime();
+      const bTime =
+        sidebarData.conversationTimestamps.get(b.id) ||
+        new Date(b.last_message_at || b.created_at).getTime();
+      return bTime - aTime; // Most recent first
+    });
+  }, [conversations, sidebarData.conversationTimestamps]);
 
   // Ref to track last processed message to prevent infinite loops
   const lastProcessedMessageRef = useRef<string | null>(null);
@@ -272,9 +346,15 @@ export default function ChatUI() {
     return () => messagesContainer.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Cleanup realtime subscriptions on unmount
+  // Cleanup realtime subscriptions on unmount and periodic cleanup
   useEffect(() => {
+    // Periodic cleanup of expired subscriptions
+    const cleanupInterval = setInterval(() => {
+      RealtimeService.cleanupExpiredSubscriptions();
+    }, 5 * 60 * 1000); // Every 5 minutes
+
     return () => {
+      clearInterval(cleanupInterval);
       // Cleanup all realtime channels when component unmounts
       RealtimeService.cleanup();
     };
@@ -295,34 +375,40 @@ export default function ChatUI() {
     try {
       await sendChatMessage(newMessage.trim());
       setNewMessage("");
-      // Refresh conversations to update ordering
-      refreshSidebar();
+      // Sidebar will be updated automatically via the useEffect that watches messages
     } catch (error) {
       console.error("Error sending message:", error);
     }
   };
 
-  // Get the active user (other user in the conversation)
-  const activeUser = otherUser || {
-    id: "",
-    first_name: "Select a conversation",
-    last_name: "",
-    profile_image_url: "/people/user-profile.png",
-    last_active: new Date().toISOString(),
-  };
+  // Memoize user objects to prevent unnecessary re-renders
+  const activeUser = useMemo(() => {
+    return (
+      otherUser || {
+        id: "",
+        first_name: "Select a conversation",
+        last_name: "",
+        profile_image_url: "/people/user-profile.png",
+        last_active: new Date().toISOString(),
+      }
+    );
+  }, [otherUser]);
 
-  // Get current user
-  const currentUser = user || {
-    id: "",
-    first_name: "User",
-    last_name: "",
-    profile_image_url: "/people/user-profile.png",
-  };
+  const currentUser = useMemo(() => {
+    return (
+      user || {
+        id: "",
+        first_name: "User",
+        last_name: "",
+        profile_image_url: "/people/user-profile.png",
+      }
+    );
+  }, [user]);
 
   return (
     <div className="mx-auto w-full max-w-3xl lg:max-w-5xl xl:max-w-7xl shadow-xl/20 rounded-xl relative">
-      {/* Loading overlay - only show for initial load */}
-      {isInitialLoading && (
+      {/* Loading overlay - only show when both sidebar and chat window are loading */}
+      {shouldShowFullLoading && (
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
@@ -362,86 +448,21 @@ export default function ChatUI() {
                 No conversations yet
               </div>
             ) : (
-              sortedConversations.map((conversation) => {
-                const otherUser =
-                  conversation.matches.kindbossing_id === currentUser.id
-                    ? conversation.matches.kindtao
-                    : conversation.matches.kindbossing;
-
-                const isActive = selectedConversationId === conversation.id;
-                const unreadCount =
-                  sidebarData.unreadCounts.get(conversation.id) || 0;
-                const hasUnread = unreadCount > 0 && !isActive; // Don't show unread for active conversation
-                const lastMessageText =
-                  sidebarData.lastMessages.get(conversation.id) ||
-                  "No messages yet";
-
-                // Get timestamp from our monitoring data or fallback to conversation data
-                const lastMessageTimestamp =
-                  sidebarData.conversationTimestamps.get(conversation.id)
-                    ? new Date(
-                        sidebarData.conversationTimestamps.get(conversation.id)!
-                      ).toISOString()
-                    : conversation.last_message_at;
-
-                return (
-                  <div
-                    key={conversation.id}
-                    onClick={() => {
-                      // Allow conversation change even while loading
-                      setSelectedConversationId(conversation.id);
-                      selectConversation(conversation.id);
-                      updateUrlWithConversation(conversation.id);
-                      setSidebarOpen(false); // close on mobile
-                    }}
-                    className={`flex items-center p-2 mb-2 cursor-pointer border-b border-[#DCDCE2] hover:bg-gray-200 ${
-                      isActive ? "bg-[#f0e7f2]" : ""
-                    }`}
-                  >
-                    <div className="relative">
-                      <img
-                        src={
-                          otherUser.profile_image_url ||
-                          "/people/user-profile.png"
-                        }
-                        alt={`${otherUser.first_name} ${otherUser.last_name}`}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <span
-                        className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
-                          false // TODO: Implement online status
-                        )}`}
-                      />
-                      {hasUnread && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {unreadCount}
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-2 flex-1 min-w-0">
-                      <h4
-                        className={`text-[0.663rem] font-medium text-[#212529] truncate ${
-                          hasUnread ? "font-bold" : ""
-                        }`}
-                      >
-                        {`${otherUser.first_name} ${otherUser.last_name}`}
-                      </h4>
-                      <p
-                        className={`text-[0.663rem] text-[#757589] truncate ${
-                          hasUnread ? "font-bold" : ""
-                        }`}
-                      >
-                        {lastMessageText}
-                      </p>
-                    </div>
-                    <span className="text-[0.663rem] text-[#757589] ml-1 whitespace-nowrap">
-                      {lastMessageTimestamp
-                        ? formatSidebarTime(lastMessageTimestamp)
-                        : ""}
-                    </span>
-                  </div>
-                );
-              })
+              sortedConversations.map((conversation) => (
+                <ConversationItem
+                  key={conversation.id}
+                  conversation={conversation}
+                  currentUser={currentUser}
+                  sidebarData={sidebarData}
+                  selectedConversationId={selectedConversationId}
+                  onSelect={(id) => {
+                    setSelectedConversationId(id);
+                    selectConversation(id);
+                    updateUrlWithConversation(id);
+                    setSidebarOpen(false); // close on mobile
+                  }}
+                />
+              ))
             )}
           </div>
         </div>
@@ -512,25 +533,23 @@ export default function ChatUI() {
               </div>
             ) : (
               <>
-                {/* Load more trigger for infinite scroll */}
+                {/* Load more trigger for infinite scroll - invisible sentinel */}
                 {hasMore && (
                   <div
                     ref={loadMoreRef}
                     data-load-more
-                    className="text-center py-2"
+                    className="h-1 w-full"
+                    style={{ minHeight: "1px" }}
+                    onClick={() => {
+                      console.log(
+                        "Sentinel clicked - manually triggering loadMore"
+                      );
+                      loadMore();
+                    }}
                   >
-                    {isLoadingMore ? (
-                      <div className="text-[0.663rem] text-[#757589]">
+                    {isLoadingMore && (
+                      <div className="text-center text-[0.663rem] text-[#757589] py-2">
                         Loading older messages...
-                      </div>
-                    ) : (
-                      <div className="text-[0.663rem] text-[#757589]">
-                        <button
-                          onClick={loadMore}
-                          className="text-blue-500 hover:text-blue-700 underline"
-                        >
-                          Load older messages
-                        </button>
                       </div>
                     )}
                   </div>
@@ -570,7 +589,7 @@ export default function ChatUI() {
                           }`}
                         >
                           <span className="!font-bold">{`${sender.first_name} ${sender.last_name}`}</span>
-                          <span>{formatChatTime(msg.created_at)}</span>
+                          <span>{formatTimestamp(msg.created_at, "chat")}</span>
                         </p>
 
                         <p className="text-[0.663rem]">{msg.content}</p>
