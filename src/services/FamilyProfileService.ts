@@ -28,18 +28,19 @@ export class FamilyProfileService {
   static async fetchFamilyIdByUserId(userId: string): Promise<string | null> {
     const supabase = await createClient();
 
+    // Get the family profile directly from family_profiles table using user_id
     const { data, error } = await supabase
-      .from("users")
-      .select("family_id")
-      .eq("id", userId)
+      .from("family_profiles")
+      .select("id")
+      .eq("user_id", userId)
       .maybeSingle();
 
-    if (error || !data?.family_id) {
+    if (error || !data?.id) {
       console.error("Error fetching family_id:", error);
       return null;
     }
 
-    return data.family_id as string;
+    return data.id as string;
   }
 
   /**
