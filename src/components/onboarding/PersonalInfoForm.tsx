@@ -10,7 +10,7 @@ import StepperFooter from "@/components/StepperFooter";
 import { createClient } from "@/utils/supabase/client";
 import { logger } from "@/utils/logger";
 import { UserService } from "@/services/client/UserService";
-import { updateUserMetadata } from "@/app/_actions/user/updateUserMetadata";
+import { updateUserMetadata } from "@/actions/user/updateUserMetadata";
 
 export default function PersonalInfoClient() {
   const router = useRouter();

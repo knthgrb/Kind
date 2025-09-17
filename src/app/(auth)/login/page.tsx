@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { login } from "@/app/_actions/auth/login";
+import { login } from "@/actions/auth/login";
 import { createClient } from "@/utils/supabase/client";
 import { logger } from "@/utils/logger";
 import { AuthService } from "@/services/client/AuthService";

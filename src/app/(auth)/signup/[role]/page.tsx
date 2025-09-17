@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { signup } from "@/app/_actions/auth/signup";
+import { signup } from "@/actions/auth/signup";
 import { useParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { logger } from "@/utils/logger";
