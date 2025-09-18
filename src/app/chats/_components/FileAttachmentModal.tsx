@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { FileUploadService } from "@/services/chat/fileUploadService";
+import { IoAttachOutline } from "react-icons/io5";
 
 interface FileAttachmentModalProps {
   open: boolean;
@@ -125,7 +126,11 @@ export default function FileAttachmentModal({
           onDrop={handleDrop}
         >
           <div className="space-y-4">
-            <div className="text-4xl">📎</div>
+            <div className="text-4xl text-gray-500 flex justify-center">
+              <span>
+                <IoAttachOutline />
+              </span>
+            </div>
             <div>
               <p className="text-lg font-medium">
                 Drop files here or click to browse
@@ -159,7 +164,7 @@ export default function FileAttachmentModal({
             </h3>
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {selectedFiles.map((file, index) => {
-                const fileIcon = FileUploadService.getFileIcon(file.type);
+                const FileIcon = FileUploadService.getFileIcon(file.type);
 
                 return (
                   <div
@@ -167,7 +172,9 @@ export default function FileAttachmentModal({
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                   >
                     <div className="flex items-center space-x-3">
-                      <span className="text-lg">{fileIcon}</span>
+                      <span className="text-lg">
+                        <FileIcon />
+                      </span>
                       <div>
                         <p className="text-sm font-medium truncate max-w-xs">
                           {file.name}

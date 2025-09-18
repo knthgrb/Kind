@@ -1,4 +1,13 @@
+import React from "react";
 import { createClient } from "@/utils/supabase/client";
+import {
+  IoImageOutline,
+  IoDocumentOutline,
+  IoDocumentTextOutline,
+  IoVideocamOutline,
+  IoMusicalNotesOutline,
+  IoAttachOutline,
+} from "react-icons/io5";
 
 export interface FileUploadProgress {
   fileId: string;
@@ -308,45 +317,40 @@ export class FileUploadService {
   }
 
   /**
-   * Get file icon based on type
+   * Get file icon component based on type
    */
-  static getFileIcon(mimeType: string): string {
+  static getFileIcon(mimeType: string): React.ComponentType<any> {
     switch (mimeType) {
       // Images
       case "image/jpeg":
       case "image/jpg":
-        return "🖼️";
       case "image/png":
-        return "🖼️";
       case "image/gif":
-        return "🖼️";
       case "image/webp":
-        return "🖼️";
+        return IoImageOutline;
 
       // Documents
       case "application/pdf":
-        return "📄";
-      case "application/msword":
-        return "📝";
-      case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return "📝";
       case "text/plain":
-        return "📄";
+        return IoDocumentOutline;
+      case "application/msword":
+      case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return IoDocumentTextOutline;
 
       // Videos
       case "video/mp4":
       case "video/webm":
       case "video/quicktime":
-        return "🎥";
+        return IoVideocamOutline;
 
       // Audio
       case "audio/mpeg":
       case "audio/wav":
       case "audio/ogg":
-        return "🎵";
+        return IoMusicalNotesOutline;
 
       default:
-        return "📎";
+        return IoAttachOutline;
     }
   }
 }

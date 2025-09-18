@@ -35,7 +35,6 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
 
     // Use ref to prevent duplicate calls without dependency loop
     if (isLoadingRef.current) {
-      console.log("⏳ Conversations already loading, skipping duplicate call");
       return;
     }
 
@@ -44,8 +43,6 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
     setError(null);
 
     try {
-      console.log("📊 Loading conversations for user:", user.id);
-
       // Get all conversations
       const conversationsData = await ChatService.getUserConversations(user.id);
 

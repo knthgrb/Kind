@@ -152,7 +152,6 @@ export class ChatService {
     );
 
     if (userError) {
-      console.error("Error fetching user details:", userError);
       // Return messages with fallback user data
       return messages.map((message) => ({
         ...message,
@@ -233,7 +232,7 @@ export class ChatService {
   ) {
     const supabase = createClient();
 
-    const updateData: any = { status };
+    const updateData: { status: string; read_at?: string } = { status };
     if (status === "read") {
       updateData.read_at = new Date().toISOString();
     }
@@ -286,7 +285,6 @@ export class ChatService {
     );
 
     if (userError) {
-      console.error("Error fetching user details:", userError);
       // Return conversation with null user data
       return {
         ...data,
@@ -372,7 +370,6 @@ export class ChatService {
     );
 
     if (userError) {
-      console.error("Error fetching user details:", userError);
       // Return conversations with null user data
       return data.map((conversation) => ({
         ...conversation,
@@ -527,7 +524,6 @@ export class ChatService {
       .is("read_at", null);
 
     if (error) {
-      console.error("Error fetching unread counts:", error);
       return new Map();
     }
 
@@ -571,7 +567,6 @@ export class ChatService {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching latest messages:", error);
       return new Map();
     }
 
@@ -612,7 +607,6 @@ export class ChatService {
       .single();
 
     if (error) {
-      console.error("Error getting other user ID:", error);
       return null;
     }
 

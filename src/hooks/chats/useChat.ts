@@ -13,6 +13,7 @@ import {
 import { useInfiniteMessages } from "./useInfiniteMessages";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { MessageWithUser } from "@/types/chat";
+import { convertToMessageWithUser } from "@/utils/chatMessageUtils";
 
 export interface UseChatOptions {
   conversationId: string | null;
@@ -62,44 +63,10 @@ export function useChat({
     null
   );
 
-  // Convert ChatMessage to MessageWithUser format
-  const convertToMessageWithUser = useCallback(
+  // Use shared message conversion utility
+  const convertMessage = useCallback(
     (chatMessage: ChatMessage): MessageWithUser => {
-      return {
-        id: chatMessage.id,
-        conversation_id: chatMessage.conversationId,
-        sender_id: chatMessage.user.id,
-        content: chatMessage.content,
-        message_type: chatMessage.messageType as any,
-        file_url: chatMessage.fileUrl,
-        status: "sent" as const,
-        read_at: null,
-        created_at: chatMessage.createdAt,
-        sender: {
-          id: chatMessage.user.id,
-          first_name: chatMessage.user.name.split(" ")[0] || "",
-          last_name: chatMessage.user.name.split(" ").slice(1).join(" ") || "",
-          email: "",
-          role: "kindtao" as const,
-          profile_image_url: chatMessage.user.avatar || null,
-          phone: null,
-          date_of_birth: null,
-          gender: null,
-          address: null,
-          city: null,
-          province: null,
-          postal_code: null,
-          is_verified: false,
-          verification_status: "pending",
-          subscription_tier: "free",
-          subscription_expires_at: null,
-          swipe_credits: 0,
-          boost_credits: 0,
-          last_active: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      };
+      return convertToMessageWithUser(chatMessage);
     },
     []
   );
@@ -122,8 +89,8 @@ export function useChat({
 
   // Convert ChatMessages to MessageWithUser format with memoization
   const messages = useMemo(
-    () => chatMessages.map(convertToMessageWithUser),
-    [chatMessages, convertToMessageWithUser]
+    () => chatMessages.map(convertMessage),
+    [chatMessages, convertMessage]
   );
 
   // Load conversation details

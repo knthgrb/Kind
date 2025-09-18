@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChatService } from "@/services/chat/chatService";
-import { RealtimeService } from "@/services/chat/realtimeService";
+import {
+  RealtimeService,
+  type ChatMessage,
+} from "@/services/chat/realtimeService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { ConversationWithDetails } from "@/types/chat";
+import { formatMessageForSidebar } from "@/utils/chatMessageUtils";
 
 export interface SidebarData {
   lastMessages: Map<string, string>;
@@ -20,10 +24,10 @@ export interface UseSidebarMonitoringOptions {
 export interface UseSidebarMonitoringReturn {
   sidebarData: SidebarData;
   refreshSidebar: () => Promise<void>;
-  updateSidebarData: (conversationId: string, message: any) => void;
+  updateSidebarData: (conversationId: string, message: ChatMessage) => void;
   updateSelectedConversationSidebar: (
     conversationId: string,
-    message: any
+    message: ChatMessage
   ) => void;
   isInitialDataLoading: boolean;
 }
@@ -94,8 +98,10 @@ export function useSidebarMonitoring({
 
         if (latestMessage) {
           const isFromCurrentUser = latestMessage.sender_id === user.id;
-          const prefix = isFromCurrentUser ? "You: " : "";
-          const messageText = `${prefix}${latestMessage.content}`;
+          const messageText = formatMessageForSidebar(
+            latestMessage.content,
+            isFromCurrentUser
+          );
           lastMessagesMap.set(conversation.id, messageText);
           timestampsMap.set(
             conversation.id,
@@ -156,11 +162,6 @@ export function useSidebarMonitoring({
   const subscribeToAllConversations = useCallback(async () => {
     if (conversations.length === 0 || !user?.id) return;
 
-    console.log(
-      "🔄 Setting up sidebar subscriptions for conversations:",
-      conversations.map((c) => c.id)
-    );
-
     // Clean up existing subscriptions
     subscriptionsRef.current.forEach((subscription) => {
       if (subscription && typeof subscription.unsubscribe === "function") {
@@ -172,31 +173,17 @@ export function useSidebarMonitoring({
     // Subscribe to all conversations
     const subscriptionPromises = conversations.map(async (conversation) => {
       try {
-        console.log();
         const channel = await RealtimeService.subscribeToMessages(
           conversation.id,
           (message) => {
-            console.log(
-              `📨 Sidebar received message for ${conversation.id}:`,
-              message
-            );
-
             // Check if we've already processed this message
             if (processedMessagesRef.current.has(message.id)) {
-              console.log(
-                `⚠️ Message ${message.id} already processed, skipping`
-              );
               return;
             }
             processedMessagesRef.current.add(message.id);
 
             const messageTime = new Date(message.createdAt).getTime();
             const isFromCurrentUser = message.user.id === user.id;
-
-            console.log(`📝 Updating sidebar for ${conversation.id}:`, {
-              isFromCurrentUser,
-              isSelected: conversation.id === selectedConversationIdRef.current,
-            });
 
             // Update sidebar data
             setSidebarData((prev) => {
@@ -205,8 +192,10 @@ export function useSidebarMonitoring({
               const newTimestamps = new Map(prev.conversationTimestamps);
 
               // Update last message
-              const prefix = isFromCurrentUser ? "You: " : "";
-              const messageText = `${prefix}${message.content}`;
+              const messageText = formatMessageForSidebar(
+                message.content,
+                isFromCurrentUser
+              );
               newLastMessages.set(conversation.id, messageText);
 
               // Update timestamp
@@ -219,11 +208,6 @@ export function useSidebarMonitoring({
               ) {
                 const currentCount = newUnreadCounts.get(conversation.id) || 0;
                 newUnreadCounts.set(conversation.id, currentCount + 1);
-                console.log(
-                  `🔢 Updated unread count for ${conversation.id}: ${
-                    currentCount + 1
-                  }`
-                );
               }
 
               return {
@@ -234,20 +218,13 @@ export function useSidebarMonitoring({
             });
           },
           (error) => {
-            console.error(
-              `Error in sidebar subscription for conversation ${conversation.id}:`,
-              error
-            );
+            // Silent error handling for sidebar subscription
           }
         );
 
         subscriptionsRef.current.set(conversation.id, channel);
-        console.log();
       } catch (error) {
-        console.error(
-          `Error subscribing sidebar to conversation ${conversation.id}:`,
-          error
-        );
+        // Silent error handling for subscription failures
       }
     });
 
@@ -256,7 +233,7 @@ export function useSidebarMonitoring({
 
   // Update sidebar data from external source (called by main chat hook)
   const updateSidebarData = useCallback(
-    (conversationId: string, message: any) => {
+    (conversationId: string, message: ChatMessage) => {
       const messageTime = new Date(message.createdAt).getTime();
       const isFromCurrentUser = message.user.id === user?.id;
 
@@ -266,8 +243,10 @@ export function useSidebarMonitoring({
         const newTimestamps = new Map(prev.conversationTimestamps);
 
         // Update last message
-        const prefix = isFromCurrentUser ? "You: " : "";
-        const messageText = `${prefix}${message.content}`;
+        const messageText = formatMessageForSidebar(
+          message.content,
+          isFromCurrentUser
+        );
         newLastMessages.set(conversationId, messageText);
 
         // Update timestamp
@@ -294,7 +273,7 @@ export function useSidebarMonitoring({
 
   // Update sidebar for selected conversation when it changes
   const updateSelectedConversationSidebar = useCallback(
-    (conversationId: string, message: any) => {
+    (conversationId: string, message: ChatMessage) => {
       const messageTime = new Date(message.createdAt).getTime();
       const isFromCurrentUser = message.user.id === user?.id;
 
@@ -303,8 +282,10 @@ export function useSidebarMonitoring({
         const newTimestamps = new Map(prev.conversationTimestamps);
 
         // Update last message
-        const prefix = isFromCurrentUser ? "You: " : "";
-        const messageText = `${prefix}${message.content}`;
+        const messageText = formatMessageForSidebar(
+          message.content,
+          isFromCurrentUser
+        );
         newLastMessages.set(conversationId, messageText);
 
         // Update timestamp
@@ -339,7 +320,7 @@ export function useSidebarMonitoring({
           };
         });
       } catch (error) {
-        console.error("Error clearing unread count:", error);
+        // Silent error handling for unread count clearing
       }
     },
     [user?.id]

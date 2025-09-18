@@ -26,8 +26,39 @@ import type {
   User,
   MessageWithUser,
 } from "@/types/chat";
+import type { SidebarData } from "@/hooks/chats/useSidebarMonitoring";
+import { getOtherUser } from "@/utils/chatMessageUtils";
+import type { User as AuthUser } from "@/types/user";
 
 // Utility functions moved to src/utils/chatUtils.ts
+
+// Convert auth user to chat user
+function convertAuthUserToChatUser(authUser: AuthUser): User {
+  return {
+    id: authUser.id,
+    role: authUser.user_metadata.role,
+    email: authUser.user_metadata.email,
+    phone: authUser.user_metadata.phone || null,
+    first_name: authUser.user_metadata.first_name,
+    last_name: authUser.user_metadata.last_name,
+    date_of_birth: authUser.user_metadata.date_of_birth || null,
+    gender: authUser.user_metadata.gender || null,
+    profile_image_url: authUser.user_metadata.profile_image_url || null,
+    address: authUser.user_metadata.full_address || null,
+    city: authUser.user_metadata.city || null,
+    province: authUser.user_metadata.province || null,
+    postal_code: authUser.user_metadata.postal_code || null,
+    is_verified: false, // Default value
+    verification_status: authUser.user_metadata.verification_status,
+    subscription_tier: authUser.user_metadata.subscription_tier,
+    subscription_expires_at: null, // Default value
+    swipe_credits: authUser.user_metadata.swipe_credits,
+    boost_credits: authUser.user_metadata.boost_credits,
+    last_active: new Date().toISOString(), // Default value
+    created_at: authUser.created_at || new Date().toISOString(),
+    updated_at: authUser.updated_at || new Date().toISOString(),
+  };
+}
 
 // Memoized conversation item component to prevent unnecessary re-renders
 const ConversationItem = memo(
@@ -38,17 +69,15 @@ const ConversationItem = memo(
     selectedConversationId,
     onSelect,
   }: {
-    conversation: any;
-    currentUser: any;
-    sidebarData: any;
+    conversation: ConversationWithDetails;
+    currentUser: User;
+    sidebarData: SidebarData;
     selectedConversationId: string | null;
     onSelect: (id: string) => void;
   }) => {
     const otherUser = useMemo(() => {
-      return conversation.matches.kindbossing_id === currentUser.id
-        ? conversation.matches.kindtao
-        : conversation.matches.kindbossing;
-    }, [conversation.matches, currentUser.id]);
+      return getOtherUser(conversation, currentUser.id);
+    }, [conversation, currentUser.id]);
 
     const isActive = selectedConversationId === conversation.id;
     const unreadCount = sidebarData.unreadCounts.get(conversation.id) || 0;
@@ -78,7 +107,7 @@ const ConversationItem = memo(
           />
           <span
             className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
-              false // TODO: Implement online status
+              false
             )}`}
           />
           {hasUnread && (
@@ -177,8 +206,6 @@ export default function ChatUIClient({
     autoMarkAsRead: true,
   });
 
-  // Debug: Log what we're getting from useChatUI
-
   // Separate loading states to prevent flickering
   const isInitialLoading =
     isLoadingConversations || (isLoadingMessages && messages.length === 0);
@@ -238,10 +265,12 @@ export default function ChatUIClient({
         user: {
           id: latestMessage.sender_id,
           name: `${latestMessage.sender.first_name} ${latestMessage.sender.last_name}`,
-          avatar: latestMessage.sender.profile_image_url,
+          avatar: latestMessage.sender.profile_image_url || undefined,
         },
         createdAt: latestMessage.created_at,
         conversationId: latestMessage.conversation_id,
+        messageType: latestMessage.message_type || "text",
+        fileUrl: latestMessage.file_url,
       };
 
       updateSelectedConversationSidebar(selectedConversationId, chatMessage);
@@ -359,7 +388,6 @@ export default function ChatUIClient({
   useEffect(() => {
     const messagesContainer = document.querySelector(".overflow-y-auto");
     if (!messagesContainer) {
-      console.warn("Messages container not found for scroll detection");
       return;
     }
 
@@ -409,7 +437,6 @@ export default function ChatUIClient({
       setEmojiPickerOpen(false); // Close emoji picker after sending
       // Sidebar will be updated automatically via the useEffect that watches messages
     } catch (error) {
-      console.error("Error sending message:", error);
       // Show error notification for blocked user
       if (error instanceof Error && error.message.includes("blocked user")) {
         toast.showError(
@@ -421,7 +448,7 @@ export default function ChatUIClient({
   };
 
   // Handle emoji selection from the emoji picker
-  const handleEmojiClick = (emojiObject: any) => {
+  const handleEmojiClick = (emojiObject: { emoji: string }) => {
     setNewMessage((prev) => prev + emojiObject.emoji);
     setEmojiPickerOpen(false);
   };
@@ -448,7 +475,7 @@ export default function ChatUIClient({
         for (let i = 0; i < uploadedFiles.length; i++) {
           const fileMetadata = uploadedFiles[i];
           await sendChatMessage(
-            `📎 ${fileMetadata.fileName}`,
+            fileMetadata.fileName,
             fileMetadata.mimeType,
             fileMetadata.url
           );
@@ -456,7 +483,6 @@ export default function ChatUIClient({
 
         setSelectedFiles([]);
       } catch (error) {
-        console.error("Error in file upload process:", error);
         showError("Failed to upload files. Please try again.");
       }
     },
@@ -486,7 +512,6 @@ export default function ChatUIClient({
       toast.showSuccess("User Blocked", "User has been blocked successfully");
       router.push("/chats");
     } catch (error) {
-      console.error("Error blocking user:", error);
       toast.showError(
         "Block Failed",
         "Failed to block user. Please try again."
@@ -522,7 +547,6 @@ export default function ChatUIClient({
         "Your report has been submitted successfully."
       );
     } catch (error) {
-      console.error("Error reporting user:", error);
       toast.showError(
         "Report Failed",
         "Failed to submit report. Please try again."
@@ -629,21 +653,24 @@ export default function ChatUIClient({
                 No conversations yet
               </div>
             ) : (
-              sortedConversations.map((conversation) => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  currentUser={currentUser}
-                  sidebarData={sidebarData}
-                  selectedConversationId={selectedConversationId}
-                  onSelect={(id) => {
-                    setSelectedConversationId(id);
-                    selectConversation(id);
-                    updateUrlWithConversation(id);
-                    setSidebarOpen(false); // close on mobile
-                  }}
-                />
-              ))
+              sortedConversations.map(
+                (conversation) =>
+                  user && (
+                    <ConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      currentUser={convertAuthUserToChatUser(user)}
+                      sidebarData={sidebarData}
+                      selectedConversationId={selectedConversationId}
+                      onSelect={(id) => {
+                        setSelectedConversationId(id);
+                        selectConversation(id);
+                        updateUrlWithConversation(id);
+                        setSidebarOpen(false); // close on mobile
+                      }}
+                    />
+                  )
+              )
             )}
           </div>
         </div>
@@ -670,7 +697,7 @@ export default function ChatUIClient({
                 />
                 <span
                   className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
-                    false // TODO: Implement online status
+                    false
                   )}`}
                 />
               </div>
@@ -679,7 +706,7 @@ export default function ChatUIClient({
                   {`${activeUser.first_name} ${activeUser.last_name}`}
                 </h3>
                 <p className="text-[clamp(0.663rem,0.8rem,0.9rem)] text-[#757589]">
-                  Offline
+                  Offline // ! is_online not implemented yet
                 </p>
               </div>
             </div>
@@ -807,7 +834,7 @@ export default function ChatUIClient({
                         {msg.file_url && msg.message_type !== "text" ? (
                           <FileMessage
                             fileUrl={msg.file_url}
-                            fileName={msg.content.replace("📎 ", "")}
+                            fileName={msg.content}
                             fileSize={0}
                             mimeType={msg.message_type}
                             isSent={isSent}

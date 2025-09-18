@@ -8,6 +8,8 @@ import {
   type ChatMessage,
 } from "@/services/chat/realtimeService";
 import { useAuthStore } from "@/stores/useAuthStore";
+import type { MessageWithUser } from "@/types/chat";
+import { convertToChatMessage } from "@/utils/chatMessageUtils";
 
 export interface UseInfiniteMessagesOptions {
   conversationId: string | null;
@@ -61,9 +63,9 @@ export function useInfiniteMessages({
 
   // Request deduplication to prevent duplicate API calls
   const pendingRequests = useRef<Set<string>>(new Set());
-  const requestCache = useRef<Map<string, { data: any; timestamp: number }>>(
-    new Map()
-  );
+  const requestCache = useRef<
+    Map<string, { data: unknown; timestamp: number }>
+  >(new Map());
   const CACHE_DURATION = 5000; // 5 seconds cache
 
   // Call monitoring to track backend usage
@@ -85,10 +87,6 @@ export function useInfiniteMessages({
       callHistory.current = callHistory.current.slice(-50);
     }
 
-    console.log(
-      `📊 Backend Call #${callCount.current}: ${type} for conversation ${conversationId}`
-    );
-
     // Warn if too many calls in short time
     const recentCalls = callHistory.current.filter(
       (call) =>
@@ -96,9 +94,7 @@ export function useInfiniteMessages({
         call.conversationId === conversationId
     );
     if (recentCalls.length > 10) {
-      console.warn(
-        `⚠️ HIGH CALL FREQUENCY: ${recentCalls.length} calls in 10s for conversation ${conversationId}`
-      );
+      // High call frequency detected - could implement rate limiting here
     }
   }, []);
 
@@ -108,19 +104,17 @@ export function useInfiniteMessages({
       // Check cache first
       const cached = requestCache.current.get(key);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log("📦 Using cached request:", key);
-        return cached.data;
+        return cached.data as T;
       }
 
       // Check if request is already pending
       if (pendingRequests.current.has(key)) {
-        console.log("⏳ Request already pending:", key);
         // Wait for pending request to complete
         return new Promise((resolve) => {
           const checkPending = () => {
             const cached = requestCache.current.get(key);
             if (cached) {
-              resolve(cached.data);
+              resolve(cached.data as T);
             } else {
               setTimeout(checkPending, 100);
             }
@@ -131,7 +125,6 @@ export function useInfiniteMessages({
 
       // Make new request
       pendingRequests.current.add(key);
-      console.log("🚀 Making new request:", key);
 
       try {
         const result = await requestFn();
@@ -148,22 +141,13 @@ export function useInfiniteMessages({
     []
   );
 
-  // Convert database message to ChatMessage format
-  const convertToChatMessage = useCallback((message: any): ChatMessage => {
-    return {
-      id: message.id,
-      content: message.content,
-      user: {
-        id: message.sender.id,
-        name: `${message.sender.first_name} ${message.sender.last_name}`,
-        avatar: message.sender.profile_image_url || undefined,
-      },
-      createdAt: message.created_at,
-      conversationId: message.conversation_id,
-      messageType: message.message_type,
-      fileUrl: message.file_url,
-    };
-  }, []);
+  // Use shared message conversion utility
+  const convertMessage = useCallback(
+    (message: MessageWithUser): ChatMessage => {
+      return convertToChatMessage(message, message.sender);
+    },
+    []
+  );
 
   // Load initial messages with deduplication
   const loadInitialMessages = useCallback(async () => {
@@ -181,7 +165,7 @@ export function useInfiniteMessages({
         ChatService.fetchMessagesWithUsers(conversationId, pageSize, 0)
       );
 
-      const chatMessages = dbMessages.map(convertToChatMessage);
+      const chatMessages = dbMessages.map(convertMessage);
       chatMessages.reverse();
 
       setMessages(chatMessages);
@@ -200,7 +184,7 @@ export function useInfiniteMessages({
   }, [
     conversationId,
     pageSize,
-    convertToChatMessage,
+    convertMessage,
     onMessage,
     makeDeduplicatedRequest,
   ]);
@@ -243,7 +227,7 @@ export function useInfiniteMessages({
         return;
       }
 
-      const chatMessages = dbMessages.map(convertToChatMessage);
+      const chatMessages = dbMessages.map(convertMessage);
 
       chatMessages.reverse();
 
@@ -282,18 +266,15 @@ export function useInfiniteMessages({
       setIsLoadingMore(false);
       isLoadingRef.current = false;
     }
-  }, [conversationId, pageSize, hasMore, convertToChatMessage]);
+  }, [conversationId, pageSize, hasMore, convertMessage]);
 
   // Handle realtime message events
   const handleRealtimeMessage = useCallback((message: ChatMessage) => {
-    console.log("🔥 Realtime message received:", message);
     setMessages((prevMessages) => {
       const messageExists = prevMessages.some((msg) => msg.id === message.id);
       if (!messageExists) {
         const newMessages = [...prevMessages, message];
         return newMessages;
-      } else {
-        console.log("⚠️ Message already exists, skipping");
       }
       return prevMessages;
     });
@@ -306,7 +287,6 @@ export function useInfiniteMessages({
 
     // Prevent loading if already loading or loaded recently (within 1 second)
     if (isLoadingRef.current || timeSinceLastLoad < 1000) {
-      console.log("Load more blocked - already loading or too recent");
       return;
     }
 
@@ -354,7 +334,8 @@ export function useInfiniteMessages({
           id: user.id,
           first_name: userMetadata?.first_name || "Unknown",
           last_name: userMetadata?.last_name || "User",
-          profile_image_url: (user as any).profile_image_url || null,
+          profile_image_url:
+            (user as { profile_image_url?: string }).profile_image_url || null,
         });
 
         setMessages((prevMessages) => {
@@ -386,12 +367,6 @@ export function useInfiniteMessages({
   // Intersection Observer for infinite loading
   const loadMoreRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
-      console.log("loadMoreRefCallback called:", {
-        node,
-        hasMore,
-        isLoading: isLoadingRef.current,
-      });
-
       // Store the ref
       loadMoreRef.current = node;
       sentinelElementRef.current = node;
@@ -409,23 +384,12 @@ export function useInfiniteMessages({
         ) as HTMLElement;
         messagesContainerRef.current = messagesContainer;
 
-        console.log("Setting up observer with container:", messagesContainer);
-
         if (messagesContainer) {
           observerRef.current = new IntersectionObserver(
             (entries) => {
               const entry = entries[0];
-              console.log("Intersection Observer callback:", {
-                isIntersecting: entry.isIntersecting,
-                hasMore,
-                isLoading: isLoadingRef.current,
-                intersectionRatio: entry.intersectionRatio,
-              });
 
               if (entry.isIntersecting && hasMore && !isLoadingRef.current) {
-                console.log(
-                  "Intersection Observer triggered - loading more messages"
-                );
                 debouncedLoadMore();
               }
             },
@@ -436,9 +400,6 @@ export function useInfiniteMessages({
             }
           );
           observerRef.current.observe(node);
-          console.log("Observer set up and observing node");
-        } else {
-          console.log("No messages container found");
         }
       }
     },
@@ -449,7 +410,6 @@ export function useInfiniteMessages({
   const setupObserver = useCallback(() => {
     const element = loadMoreRef.current || sentinelElementRef.current;
     if (element && hasMore) {
-      console.log("Setting up observer via setupObserver function");
       loadMoreRefCallback(element);
     }
   }, [hasMore]);
@@ -473,15 +433,9 @@ export function useInfiniteMessages({
   // Re-observe when hasMore changes (removed loadMoreRefCallback dependency to prevent loop)
   useEffect(() => {
     if (loadMoreRef.current && hasMore) {
-      console.log("Setting up observer via useEffect");
       loadMoreRefCallback(loadMoreRef.current);
     }
   }, [hasMore]);
-
-  // Debug: Log when loadMoreRef changes
-  useEffect(() => {
-    console.log("loadMoreRef changed:", loadMoreRef.current);
-  }, [loadMoreRef.current]);
 
   // Fallback: Add scroll event listener as backup (only if intersection observer fails)
   useEffect(() => {
@@ -491,11 +445,8 @@ export function useInfiniteMessages({
     // Only use scroll fallback if intersection observer is not working
     const hasWorkingObserver = observerRef.current !== null;
     if (hasWorkingObserver) {
-      console.log("Intersection observer is working, skipping scroll fallback");
       return;
     }
-
-    console.log("Setting up scroll fallback");
 
     const handleScroll = () => {
       // Clear existing timeout
@@ -509,7 +460,6 @@ export function useInfiniteMessages({
         const sentinel = loadMoreRef.current || sentinelElementRef.current;
 
         if (sentinel && scrollTop <= 50 && hasMore && !isLoadingRef.current) {
-          console.log("Scroll fallback triggered - loading more messages");
           debouncedLoadMore();
         }
       }, 100); // 100ms debounce
@@ -553,22 +503,16 @@ export function useInfiniteMessages({
     currentConversationIdRef.current = conversationId;
     subscriptionRef.current = true;
 
-    console.log(
-      "🚀 Setting up realtime subscription for conversation:",
-      conversationId
-    );
-
     RealtimeService.subscribeToMessages(
       conversationId,
       handleRealtimeMessage,
       (error) => {
-        console.error("Realtime subscription error:", error);
         setError(error);
       }
     )
       .then(() => {})
       .catch((err) => {
-        console.error("Failed to establish realtime subscription:", err);
+        setError(err);
       });
 
     return () => {

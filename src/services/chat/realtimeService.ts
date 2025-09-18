@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import type { Message } from "./chatService";
+import type { Message, Conversation } from "./chatService";
 import { PushNotificationService } from "@/services/notifications/pushNotificationService";
 
 export interface ChatMessage {
@@ -30,14 +30,14 @@ export class RealtimeService {
     string,
     {
       onMessage: (message: ChatMessage) => void;
-      onError?: (error: any) => void;
+      onError?: (error: Error) => void;
     }
   > = new Map();
   private static multipleCallbacks: Map<
     string,
     Set<{
       onMessage: (message: ChatMessage) => void;
-      onError?: (error: any) => void;
+      onError?: (error: Error) => void;
     }>
   > = new Map();
   private static retryAttempts: Map<string, number> = new Map();
@@ -50,8 +50,8 @@ export class RealtimeService {
   static subscribeToMessages(
     conversationId: string,
     onMessage: (message: ChatMessage) => void,
-    onError?: (error: any) => void
-  ): Promise<any> {
+    onError?: (error: Error) => void
+  ): Promise<RealtimeChannel> {
     const supabase = createClient();
     const channelName = `conversation:${conversationId}`;
 
@@ -63,7 +63,7 @@ export class RealtimeService {
         this.multipleCallbacks.set(conversationId, new Set());
       }
       this.multipleCallbacks.get(conversationId)!.add({ onMessage, onError });
-      return Promise.resolve(existingChannel);
+      return Promise.resolve(existingChannel as RealtimeChannel);
     }
 
     // Check if there's already a pending subscription
@@ -90,76 +90,71 @@ export class RealtimeService {
       this.channels.delete(conversationId);
     }
 
-    const subscriptionPromise = new Promise((resolve, reject) => {
-      const channel = supabase
-        .channel(channelName)
-        .on("broadcast", { event: "message" }, (payload) => {
-          const message = payload.payload as ChatMessage;
-          this.showMessageNotification(message, conversationId);
+    const subscriptionPromise = new Promise<RealtimeChannel>(
+      (resolve, reject) => {
+        const channel = supabase
+          .channel(channelName)
+          .on("broadcast", { event: "message" }, (payload) => {
+            const message = payload.payload as ChatMessage;
+            this.showMessageNotification(message, conversationId);
 
-          // Call all callbacks for this conversation
-          const callbacks = this.subscriptionCallbacks.get(conversationId);
-          if (callbacks) {
-            callbacks.onMessage(message);
-          }
-
-          // Call multiple callbacks
-          const multipleCallbacks = this.multipleCallbacks.get(conversationId);
-          if (multipleCallbacks) {
-            multipleCallbacks.forEach((callback) => {
-              callback.onMessage(message);
-            });
-          }
-        })
-        .subscribe((status, err) => {
-          if (err) {
-            console.warn(
-              `Realtime subscription error for conversation ${conversationId}:`,
-              err
-            );
+            // Call all callbacks for this conversation
             const callbacks = this.subscriptionCallbacks.get(conversationId);
-            callbacks?.onError?.(err);
+            if (callbacks) {
+              callbacks.onMessage(message);
+            }
 
-            // Call error callbacks for all multiple callbacks
+            // Call multiple callbacks
             const multipleCallbacks =
               this.multipleCallbacks.get(conversationId);
             if (multipleCallbacks) {
               multipleCallbacks.forEach((callback) => {
-                callback.onError?.(err);
+                callback.onMessage(message);
               });
             }
+          })
+          .subscribe((status, err) => {
+            if (err) {
+              const callbacks = this.subscriptionCallbacks.get(conversationId);
+              callbacks?.onError?.(err);
 
-            this.pendingSubscriptions.delete(conversationId);
-            reject(err);
-            return;
-          }
+              // Call error callbacks for all multiple callbacks
+              const multipleCallbacks =
+                this.multipleCallbacks.get(conversationId);
+              if (multipleCallbacks) {
+                multipleCallbacks.forEach((callback) => {
+                  callback.onError?.(err);
+                });
+              }
 
-          if (status === "SUBSCRIBED") {
-            // Store the channel for cleanup
-            this.channels.set(conversationId, channel);
-            this.pendingSubscriptions.delete(conversationId);
-            // Reset retry attempts on successful subscription
-            this.retryAttempts.delete(conversationId);
-            resolve(channel);
-          } else if (status === "CHANNEL_ERROR") {
-            console.warn(`Channel error for conversation ${conversationId}`);
-            this.handleSubscriptionError(
-              conversationId,
-              "CHANNEL_ERROR",
-              reject
-            );
-          } else if (status === "TIMED_OUT") {
-            console.warn(
-              `Subscription timeout for conversation ${conversationId}`
-            );
-            this.handleSubscriptionError(conversationId, "TIMED_OUT", reject);
-          } else if (status === "CLOSED") {
-            // Remove from channels map when closed
-            this.channels.delete(conversationId);
-            this.pendingSubscriptions.delete(conversationId);
-          }
-        });
-    });
+              this.pendingSubscriptions.delete(conversationId);
+              reject(err);
+              return;
+            }
+
+            if (status === "SUBSCRIBED") {
+              // Store the channel for cleanup
+              this.channels.set(conversationId, channel);
+              this.pendingSubscriptions.delete(conversationId);
+              // Reset retry attempts on successful subscription
+              this.retryAttempts.delete(conversationId);
+              resolve(channel);
+            } else if (status === "CHANNEL_ERROR") {
+              this.handleSubscriptionError(
+                conversationId,
+                "CHANNEL_ERROR",
+                reject
+              );
+            } else if (status === "TIMED_OUT") {
+              this.handleSubscriptionError(conversationId, "TIMED_OUT", reject);
+            } else if (status === "CLOSED") {
+              // Remove from channels map when closed
+              this.channels.delete(conversationId);
+              this.pendingSubscriptions.delete(conversationId);
+            }
+          });
+      }
+    );
 
     // Store the pending subscription
     this.pendingSubscriptions.set(conversationId, subscriptionPromise);
@@ -222,10 +217,6 @@ export class RealtimeService {
     const existingChannel = this.channels.get(conversationId);
 
     if (!existingChannel) {
-      console.warn(
-        "No existing channel found for conversation:",
-        conversationId
-      );
       return; // Don't throw error, just skip broadcasting
     }
 
@@ -233,7 +224,6 @@ export class RealtimeService {
     const isReady = await this.ensureChannelReady(conversationId);
 
     if (!isReady) {
-      console.warn("Channel not ready for conversation:", conversationId);
       return; // Don't throw error, just skip broadcasting
     }
 
@@ -244,7 +234,7 @@ export class RealtimeService {
         payload: message,
       });
     } catch (error) {
-      console.error("Broadcast message failed:", error);
+      // Silent error handling for broadcast failures
     }
   }
 
@@ -280,8 +270,8 @@ export class RealtimeService {
    */
   static subscribeToConversation(
     conversationId: string,
-    onUpdate: (conversation: any) => void,
-    onError?: (error: any) => void
+    onUpdate: (conversation: Conversation) => void,
+    onError?: (error: Error) => void
   ) {
     const supabase = createClient();
     const channelName = `conversation-updates:${conversationId}`;
@@ -297,7 +287,7 @@ export class RealtimeService {
           filter: `id=eq.${conversationId}`,
         },
         (payload) => {
-          onUpdate(payload.new);
+          onUpdate(payload.new as Conversation);
         }
       )
       .subscribe((status, err) => {
@@ -314,8 +304,8 @@ export class RealtimeService {
    */
   static subscribeToUserConversations(
     userId: string,
-    onUpdate: (conversations: any[]) => void,
-    onError?: (error: any) => void
+    onUpdate: (conversations: Conversation[]) => void,
+    onError?: (error: Error) => void
   ) {
     const supabase = createClient();
     const channelName = `user-conversations:${userId}`;
@@ -515,7 +505,7 @@ export class RealtimeService {
         message.user.avatar
       );
     } catch (error) {
-      console.error("Error showing message notification:", error);
+      // Silent error handling for notification failures
     }
   }
 
@@ -534,7 +524,7 @@ export class RealtimeService {
           }
         }
       } catch (error) {
-        console.error("Error getting current user ID:", error);
+        // Silent error handling for user ID retrieval
       }
     }
     return null;

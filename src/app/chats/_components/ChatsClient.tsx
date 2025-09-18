@@ -41,7 +41,6 @@ export default function ChatsClient() {
           // Redirect to the default conversation
           router.push(`/chats/${defaultConversationId}`);
         } catch (error) {
-          console.error("Error getting last sent conversation:", error);
           // Fallback to first conversation
           router.push(`/chats/${conversations[0].id}`);
         }

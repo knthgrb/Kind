@@ -26,7 +26,7 @@ export default function FileMessage({
   const [actualFileSize, setActualFileSize] = useState(fileSize);
   const [isLoadingSize, setIsLoadingSize] = useState(fileSize === 0);
 
-  const fileIcon = FileUploadService.getFileIcon(mimeType);
+  const FileIcon = FileUploadService.getFileIcon(mimeType);
   const fileCategory = FileUploadService.getFileTypeCategory(mimeType);
   const formattedSize = FileUploadService.formatFileSize(actualFileSize);
 
@@ -169,17 +169,21 @@ export default function FileMessage({
 
   return (
     <div
-      className="bg-black text-white p-4 rounded-lg max-w-xs cursor-pointer hover:bg-gray-800 transition-all duration-200 hover:shadow-lg"
+      className="bg-[#f1f3f4] hover:bg-gray-200 p-4 rounded-lg max-w-xs cursor-pointer transition-colors"
       onClick={handleFileClick}
     >
       <div className="flex items-center space-x-3">
-        <span className="text-2xl flex-shrink-0">{fileIcon}</span>
+        <span className="text-2xl flex-shrink-0 text-gray-600">
+          <FileIcon />
+        </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate text-white">{fileName}</p>
-          <p className="text-xs mt-1 text-gray-300">
+          <p className="text-sm font-medium truncate text-gray-900">
+            {fileName}
+          </p>
+          <p className="text-xs mt-1 text-gray-500">
             {isLoadingSize ? "Loading..." : formattedSize}
           </p>
-          <p className="text-xs mt-1 text-gray-400">Click to download</p>
+          <p className="text-xs mt-1 text-gray-600">Click to download</p>
         </div>
       </div>
     </div>
