@@ -9,7 +9,7 @@ import BlockUserModal from "./BlockUserModal";
 import ReportUserModal, { ReportData } from "./ReportUserModal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useChatUI } from "@/hooks/chats/useChatUI";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useSidebarMonitoring } from "@/hooks/chats/useSidebarMonitoring";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { ChatService } from "@/services/chat/chatService";
@@ -114,7 +114,8 @@ ConversationItem.displayName = "ConversationItem";
 export default function ChatUIClient({
   conversationId: propConversationId,
 }: { conversationId?: string } = {}) {
-  const { user, userMetadata } = useAuth();
+  const { user } = useAuthStore();
+  const userMetadata = user?.user_metadata;
   const { showSuccess, showError } = useNotifications();
   const params = useParams();
   const router = useRouter();

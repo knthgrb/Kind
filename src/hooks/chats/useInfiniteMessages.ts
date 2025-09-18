@@ -7,7 +7,7 @@ import {
   RealtimeService,
   type ChatMessage,
 } from "@/services/chat/realtimeService";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export interface UseInfiniteMessagesOptions {
   conversationId: string | null;
@@ -33,7 +33,8 @@ export function useInfiniteMessages({
   pageSize = 25,
   onMessage,
 }: UseInfiniteMessagesOptions): UseInfiniteMessagesReturn {
-  const { user, userMetadata } = useAuth();
+  const { user } = useAuthStore();
+  const userMetadata = user?.user_metadata;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
