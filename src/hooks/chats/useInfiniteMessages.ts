@@ -59,14 +59,14 @@ export function useInfiniteMessages({
   const lastLoadTimeRef = useRef<number>(0);
   const scrollDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ ADDED: Request deduplication to prevent duplicate API calls
+  // Request deduplication to prevent duplicate API calls
   const pendingRequests = useRef<Set<string>>(new Set());
   const requestCache = useRef<Map<string, { data: any; timestamp: number }>>(
     new Map()
   );
   const CACHE_DURATION = 5000; // 5 seconds cache
 
-  // ✅ ADDED: Call monitoring to track backend usage
+  // Call monitoring to track backend usage
   const callCount = useRef(0);
   const callHistory = useRef<
     Array<{ type: string; timestamp: number; conversationId: string }>
@@ -102,7 +102,7 @@ export function useInfiniteMessages({
     }
   }, []);
 
-  // ✅ ADDED: Deduplicated request function to prevent duplicate API calls
+  // Deduplicated request function to prevent duplicate API calls
   const makeDeduplicatedRequest = useCallback(
     async <T>(key: string, requestFn: () => Promise<T>): Promise<T> => {
       // Check cache first
@@ -137,7 +137,6 @@ export function useInfiniteMessages({
         const result = await requestFn();
         requestCache.current.set(key, { data: result, timestamp: Date.now() });
 
-        // ✅ ADDED: Log successful call
         const conversationId = key.split("-")[1];
         logCall("API_REQUEST", conversationId);
 
@@ -176,7 +175,7 @@ export function useInfiniteMessages({
     currentOffset.current = 0;
 
     try {
-      // ✅ FIXED: Use deduplicated request to prevent duplicate API calls
+      // Use deduplicated request to prevent duplicate API calls
       const requestKey = `messages-${conversationId}-${pageSize}-0`;
       const dbMessages = await makeDeduplicatedRequest(requestKey, () =>
         ChatService.fetchMessagesWithUsers(conversationId, pageSize, 0)
@@ -229,7 +228,7 @@ export function useInfiniteMessages({
     const isAtTop = currentScrollTop === 0;
 
     try {
-      // ✅ FIXED: Use deduplicated request to prevent duplicate API calls
+      // Use deduplicated request to prevent duplicate API calls
       const requestKey = `messages-${conversationId}-${pageSize}-${currentOffset.current}`;
       const dbMessages = await makeDeduplicatedRequest(requestKey, () =>
         ChatService.fetchMessagesWithUsers(
@@ -291,7 +290,6 @@ export function useInfiniteMessages({
     setMessages((prevMessages) => {
       const messageExists = prevMessages.some((msg) => msg.id === message.id);
       if (!messageExists) {
-        console.log("✅ Adding new message to state");
         const newMessages = [...prevMessages, message];
         return newMessages;
       } else {
@@ -322,7 +320,6 @@ export function useInfiniteMessages({
       if (!conversationId || !user?.id || !content.trim()) {
         return;
       }
-
       setIsSending(true);
       setSendError(null);
 
@@ -360,7 +357,6 @@ export function useInfiniteMessages({
           profile_image_url: (user as any).profile_image_url || null,
         });
 
-        console.log("💾 Adding message to local state:", chatMessage);
         setMessages((prevMessages) => {
           const newMessages = [...prevMessages, chatMessage];
           onMessage?.(newMessages);
@@ -368,11 +364,9 @@ export function useInfiniteMessages({
         });
 
         try {
-          console.log("📡 Broadcasting message via realtime:", chatMessage);
           await RealtimeService.sendMessage(conversationId, chatMessage);
-          console.log("✅ Message broadcast successful");
         } catch (broadcastError) {
-          console.error("❌ Message broadcast failed:", broadcastError);
+          console.error("Message broadcast failed:", broadcastError);
         }
 
         try {
@@ -458,12 +452,11 @@ export function useInfiniteMessages({
       console.log("Setting up observer via setupObserver function");
       loadMoreRefCallback(element);
     }
-  }, [hasMore]); // ✅ FIXED: Removed loadMoreRefCallback dependency
+  }, [hasMore]);
 
   // Set up observer when the ref is available (removed retry loop)
   useEffect(() => {
     setupObserver();
-    // ✅ FIXED: Removed retry timeout to prevent loops
   }, [setupObserver, hasMore]);
 
   // Load initial messages when conversation changes
@@ -483,7 +476,7 @@ export function useInfiniteMessages({
       console.log("Setting up observer via useEffect");
       loadMoreRefCallback(loadMoreRef.current);
     }
-  }, [hasMore]); // ✅ FIXED: Removed loadMoreRefCallback dependency
+  }, [hasMore]);
 
   // Debug: Log when loadMoreRef changes
   useEffect(() => {
@@ -531,7 +524,7 @@ export function useInfiniteMessages({
     };
   }, [hasMore, debouncedLoadMore]);
 
-  // ✅ FIXED: Simplified realtime subscription to prevent loops
+  // Simplified realtime subscription to prevent loops
   useEffect(() => {
     if (!conversationId) {
       // Clean up previous subscription if conversationId is null
@@ -569,15 +562,13 @@ export function useInfiniteMessages({
       conversationId,
       handleRealtimeMessage,
       (error) => {
-        console.error("❌ Realtime subscription error:", error);
+        console.error("Realtime subscription error:", error);
         setError(error);
       }
     )
-      .then(() => {
-        console.log("✅ Realtime subscription established");
-      })
+      .then(() => {})
       .catch((err) => {
-        console.error("❌ Failed to establish realtime subscription:", err);
+        console.error("Failed to establish realtime subscription:", err);
       });
 
     return () => {
@@ -587,7 +578,7 @@ export function useInfiniteMessages({
         currentConversationIdRef.current = null;
       }
     };
-  }, [conversationId]); // ✅ FIXED: Removed handleRealtimeMessage dependency to prevent loops
+  }, [conversationId]);
 
   // Cleanup observer and timeouts on unmount
   useEffect(() => {

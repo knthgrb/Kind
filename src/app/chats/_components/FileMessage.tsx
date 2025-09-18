@@ -43,7 +43,6 @@ export default function FileMessage({
           setIsLoadingSize(false);
         })
         .catch((error) => {
-          console.log("Could not fetch file size:", error);
           setIsLoadingSize(false);
         });
     }
@@ -52,6 +51,9 @@ export default function FileMessage({
   const handleFileClick = () => {
     if (fileCategory === "image") {
       setShowPreview(true);
+    } else if (fileCategory === "video" || fileCategory === "audio") {
+      // Video and audio players are embedded, no need to download on click
+      return;
     } else {
       handleDownload();
     }
@@ -61,7 +63,6 @@ export default function FileMessage({
     if (e) {
       e.stopPropagation();
     }
-    console.log("Download clicked for file:", fileName, "URL:", fullFileUrl);
 
     try {
       const response = await fetch(fullFileUrl);
@@ -80,10 +81,7 @@ export default function FileMessage({
 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      console.log("Download initiated successfully");
     } catch (error) {
-      console.log("Download failed, trying direct link:", error);
       try {
         const link = document.createElement("a");
         link.href = fullFileUrl;
@@ -92,9 +90,7 @@ export default function FileMessage({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      } catch (fallbackError) {
-        console.log("All download methods failed:", fallbackError);
-      }
+      } catch (fallbackError) {}
     }
   };
 
@@ -102,17 +98,17 @@ export default function FileMessage({
     return (
       <>
         <div
-          className="cursor-pointer transition-all duration-200 hover:opacity-90 bg-gray-100 rounded-lg"
+          className="cursor-pointer transition-all duration-200 hover:opacity-90 bg-gray-100 rounded-lg w-80"
           onClick={handleFileClick}
         >
           <img
             src={fullFileUrl}
             alt={fileName}
-            className="max-w-xs max-h-64 object-cover rounded-lg"
+            className="w-full max-h-64 object-cover rounded-lg"
             onError={() => setImageError(true)}
           />
           {imageError && (
-            <div className="max-w-xs h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
               <span className="text-gray-500 text-sm">
                 Image preview unavailable
               </span>
@@ -145,9 +141,35 @@ export default function FileMessage({
     );
   }
 
+  if (fileCategory === "video") {
+    return (
+      <div className="bg-gray-900 rounded-lg overflow-hidden w-80">
+        <video
+          controls
+          className="w-full max-h-64 object-cover"
+          preload="metadata"
+        >
+          <source src={fullFileUrl} type={mimeType} />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+
+  if (fileCategory === "audio") {
+    return (
+      <div className="rounded-lg py-4 w-80">
+        <audio controls className="w-full" preload="metadata">
+          <source src={fullFileUrl} type={mimeType} />
+          Your browser does not support the audio tag.
+        </audio>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="bg-gray-600 text-white p-4 rounded-lg max-w-xs cursor-pointer hover:bg-gray-700 transition-all duration-200 hover:shadow-lg"
+      className="bg-black text-white p-4 rounded-lg max-w-xs cursor-pointer hover:bg-gray-800 transition-all duration-200 hover:shadow-lg"
       onClick={handleFileClick}
     >
       <div className="flex items-center space-x-3">
@@ -159,7 +181,6 @@ export default function FileMessage({
           </p>
           <p className="text-xs mt-1 text-gray-400">Click to download</p>
         </div>
-        <div className="text-white text-lg">⬇️</div>
       </div>
     </div>
   );

@@ -116,7 +116,7 @@ export default function FileAttachmentModal({
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive
-              ? "border-blue-500 bg-blue-50"
+              ? "border-[#cc0000] bg-red-50"
               : "border-gray-300 hover:border-gray-400"
           }`}
           onDragEnter={handleDrag}
@@ -136,7 +136,7 @@ export default function FileAttachmentModal({
             </div>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-[#cc0000] text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               Choose Files
             </button>
@@ -202,7 +202,7 @@ export default function FileAttachmentModal({
           <button
             onClick={handleUpload}
             disabled={selectedFiles.length === 0}
-            className="flex-1 h-12 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 h-12 rounded-md bg-[#cc0000] text-white hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Upload {selectedFiles.length} file(s)
           </button>

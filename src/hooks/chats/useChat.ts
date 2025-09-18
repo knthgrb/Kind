@@ -182,7 +182,7 @@ export function useChat({
     loadConversation();
   }, [loadConversation]);
 
-  // ✅ FIXED: Combined mark as read effects to prevent duplicate calls
+  // Combined mark as read effects to prevent duplicate calls
   useEffect(() => {
     if (autoMarkAsRead && conversationId && user?.id && messages.length > 0) {
       const timer = setTimeout(() => {
@@ -191,7 +191,7 @@ export function useChat({
 
       return () => clearTimeout(timer);
     }
-  }, [autoMarkAsRead, conversationId, user?.id, messages.length, markAsRead]); // ✅ FIXED: Combined dependencies
+  }, [autoMarkAsRead, conversationId, user?.id, messages.length, markAsRead]);
 
   return {
     // Messages

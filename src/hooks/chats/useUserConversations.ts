@@ -24,7 +24,7 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // ✅ ADDED: Ref to prevent duplicate calls without dependency loop
+  // Ref to prevent duplicate calls without dependency loop
   const isLoadingRef = useRef(false);
 
   const loadConversations = useCallback(async () => {
@@ -33,7 +33,7 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
       return;
     }
 
-    // ✅ FIXED: Use ref to prevent duplicate calls without dependency loop
+    // Use ref to prevent duplicate calls without dependency loop
     if (isLoadingRef.current) {
       console.log("⏳ Conversations already loading, skipping duplicate call");
       return;
@@ -63,7 +63,6 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
       });
 
       setConversations(filteredConversations);
-      console.log(`✅ Loaded ${filteredConversations.length} conversations`);
     } catch (error) {
       console.error("Error loading conversations:", error);
       setError(error as Error);
@@ -71,7 +70,7 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
       isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [user?.id]); // ✅ FIXED: Removed isLoading dependency to prevent loop
+  }, [user?.id]);
 
   const refreshConversations = useCallback(async () => {
     await loadConversations();

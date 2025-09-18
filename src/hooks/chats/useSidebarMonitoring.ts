@@ -172,9 +172,7 @@ export function useSidebarMonitoring({
     // Subscribe to all conversations
     const subscriptionPromises = conversations.map(async (conversation) => {
       try {
-        console.log(
-          `📡 Subscribing sidebar to conversation: ${conversation.id}`
-        );
+        console.log();
         const channel = await RealtimeService.subscribeToMessages(
           conversation.id,
           (message) => {
@@ -237,26 +235,23 @@ export function useSidebarMonitoring({
           },
           (error) => {
             console.error(
-              `❌ Error in sidebar subscription for conversation ${conversation.id}:`,
+              `Error in sidebar subscription for conversation ${conversation.id}:`,
               error
             );
           }
         );
 
         subscriptionsRef.current.set(conversation.id, channel);
-        console.log(
-          `✅ Sidebar subscription established for ${conversation.id}`
-        );
+        console.log();
       } catch (error) {
         console.error(
-          `❌ Error subscribing sidebar to conversation ${conversation.id}:`,
+          `Error subscribing sidebar to conversation ${conversation.id}:`,
           error
         );
       }
     });
 
     await Promise.all(subscriptionPromises);
-    console.log("✅ All sidebar subscriptions completed");
   }, [conversations, user?.id]);
 
   // Update sidebar data from external source (called by main chat hook)

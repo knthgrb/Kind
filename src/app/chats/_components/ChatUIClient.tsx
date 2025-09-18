@@ -15,7 +15,7 @@ import { FileUploadService } from "@/services/chat/fileUploadService";
 import { useChatUI } from "@/hooks/chats/useChatUI";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSidebarMonitoring } from "@/hooks/chats/useSidebarMonitoring";
-import { useNotifications } from "@/contexts/NotificationContext";
+import { useToast } from "@/contexts/ToastContext";
 import { ChatService } from "@/services/chat/chatService";
 import { RealtimeService } from "@/services/chat/realtimeService";
 import { BlockingService } from "@/services/chat/blockingService";
@@ -120,7 +120,8 @@ export default function ChatUIClient({
 }: { conversationId?: string } = {}) {
   const { user } = useAuthStore();
   const userMetadata = user?.user_metadata;
-  const { showSuccess, showError } = useNotifications();
+  const { showSuccess, showError } = useToast();
+  const toast = useToast();
   const params = useParams();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -366,12 +367,6 @@ export default function ChatUIClient({
       const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
       const isAtBottom = scrollHeight - scrollTop - clientHeight < 100; // 100px threshold
       setShouldAutoScroll(isAtBottom);
-      console.log(
-        "Scroll detected - isAtBottom:",
-        isAtBottom,
-        "shouldAutoScroll:",
-        isAtBottom
-      );
     };
 
     messagesContainer.addEventListener("scroll", handleScroll);
@@ -382,13 +377,17 @@ export default function ChatUIClient({
   useEffect(() => {
     // Periodic cleanup of expired subscriptions
     const cleanupInterval = setInterval(() => {
-      RealtimeService.cleanupExpiredSubscriptions();
+      if (RealtimeService.cleanupExpiredSubscriptions) {
+        RealtimeService.cleanupExpiredSubscriptions();
+      }
     }, 5 * 60 * 1000); // Every 5 minutes
 
     return () => {
       clearInterval(cleanupInterval);
       // Cleanup all realtime channels when component unmounts
-      RealtimeService.cleanup();
+      if (RealtimeService.cleanup) {
+        RealtimeService.cleanup();
+      }
     };
   }, []);
 
@@ -413,7 +412,10 @@ export default function ChatUIClient({
       console.error("Error sending message:", error);
       // Show error notification for blocked user
       if (error instanceof Error && error.message.includes("blocked user")) {
-        showError("Cannot send message to blocked user");
+        toast.showError(
+          "Message Failed",
+          "Cannot send message to blocked user"
+        );
       }
     }
   };
@@ -440,9 +442,7 @@ export default function ChatUIClient({
         const uploadedFiles = await FileUploadService.uploadMultipleFiles(
           files,
           selectedConversationId,
-          (progress) => {
-            console.log("Upload progress:", progress);
-          }
+          (progress) => {}
         );
 
         for (let i = 0; i < uploadedFiles.length; i++) {
@@ -483,11 +483,14 @@ export default function ChatUIClient({
 
       // Close modal and redirect to chats list
       setBlockModalOpen(false);
-      showSuccess("User blocked successfully");
+      toast.showSuccess("User Blocked", "User has been blocked successfully");
       router.push("/chats");
     } catch (error) {
       console.error("Error blocking user:", error);
-      showError("Failed to block user. Please try again.");
+      toast.showError(
+        "Block Failed",
+        "Failed to block user. Please try again."
+      );
     } finally {
       setIsBlocking(false);
     }
@@ -514,10 +517,16 @@ export default function ChatUIClient({
 
       // Close modal
       setReportModalOpen(false);
-      showSuccess("Report submitted successfully.");
+      toast.showSuccess(
+        "Report Submitted",
+        "Your report has been submitted successfully."
+      );
     } catch (error) {
       console.error("Error reporting user:", error);
-      showError("Failed to submit report. Please try again.");
+      toast.showError(
+        "Report Failed",
+        "Failed to submit report. Please try again."
+      );
     } finally {
       setIsReporting(false);
     }
@@ -745,9 +754,6 @@ export default function ChatUIClient({
                     className="h-1 w-full"
                     style={{ minHeight: "1px" }}
                     onClick={() => {
-                      console.log(
-                        "Sentinel clicked - manually triggering loadMore"
-                      );
                       loadMore();
                     }}
                   >

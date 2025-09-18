@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { Message } from "./chatService";
+import { PushNotificationService } from "@/services/notifications/pushNotificationService";
 
 export interface ChatMessage {
   id: string;
@@ -94,11 +95,7 @@ export class RealtimeService {
         .channel(channelName)
         .on("broadcast", { event: "message" }, (payload) => {
           const message = payload.payload as ChatMessage;
-          console.log(
-            "📨 Broadcast received for conversation:",
-            conversationId,
-            message
-          );
+          this.showMessageNotification(message, conversationId);
 
           // Call all callbacks for this conversation
           const callbacks = this.subscriptionCallbacks.get(conversationId);
@@ -157,7 +154,6 @@ export class RealtimeService {
             );
             this.handleSubscriptionError(conversationId, "TIMED_OUT", reject);
           } else if (status === "CLOSED") {
-            console.log(`Channel closed for conversation ${conversationId}`);
             // Remove from channels map when closed
             this.channels.delete(conversationId);
             this.pendingSubscriptions.delete(conversationId);
@@ -184,11 +180,6 @@ export class RealtimeService {
     if (currentAttempts < this.maxRetries) {
       // Retry after exponential backoff
       const delay = Math.pow(2, currentAttempts) * 1000; // 1s, 2s, 4s
-      console.log(
-        `Retrying subscription for conversation ${conversationId} in ${delay}ms (attempt ${
-          currentAttempts + 1
-        }/${this.maxRetries})`
-      );
 
       this.retryAttempts.set(conversationId, currentAttempts + 1);
       this.pendingSubscriptions.delete(conversationId);
@@ -226,18 +217,13 @@ export class RealtimeService {
     message: ChatMessage
   ): Promise<void> {
     const channelName = `conversation:${conversationId}`;
-    console.log("📡 RealtimeService.sendMessage called:", {
-      conversationId,
-      message,
-    });
 
     // Get the existing subscribed channel
     const existingChannel = this.channels.get(conversationId);
-    console.log("📡 Existing channel:", existingChannel?.state);
 
     if (!existingChannel) {
       console.warn(
-        "❌ No existing channel found for conversation:",
+        "No existing channel found for conversation:",
         conversationId
       );
       return; // Don't throw error, just skip broadcasting
@@ -245,23 +231,20 @@ export class RealtimeService {
 
     // Check if channel is ready (with shorter timeout)
     const isReady = await this.ensureChannelReady(conversationId);
-    console.log("📡 Channel ready:", isReady);
 
     if (!isReady) {
-      console.warn("❌ Channel not ready for conversation:", conversationId);
+      console.warn("Channel not ready for conversation:", conversationId);
       return; // Don't throw error, just skip broadcasting
     }
 
     try {
-      console.log("📡 Sending broadcast message...");
       await existingChannel.send({
         type: "broadcast",
         event: "message",
         payload: message,
       });
-      console.log("✅ Broadcast message sent successfully");
     } catch (error) {
-      console.error("❌ Broadcast message failed:", error);
+      console.error("Broadcast message failed:", error);
     }
   }
 
@@ -496,6 +479,65 @@ export class RealtimeService {
 
       checkChannel();
     });
+  }
+
+  /**
+   * Show notification for incoming messages (similar to sidebar monitoring pattern)
+   */
+  private static async showMessageNotification(
+    message: ChatMessage,
+    conversationId: string
+  ) {
+    try {
+      // Check if notifications are enabled
+      const isEnabled = PushNotificationService.isEnabled();
+      if (!isEnabled) {
+        return;
+      }
+
+      // Check if the message is from the current user (don't notify for own messages)
+      const currentUserId = this.getCurrentUserId();
+      if (currentUserId && message.user.id === currentUserId) {
+        return;
+      }
+
+      // Check if the page is visible (don't notify if user is actively viewing)
+      const isHidden = document.hidden;
+      if (!isHidden) {
+        return;
+      }
+
+      // Show the actual notification only if page is hidden
+      await PushNotificationService.showChatNotification(
+        message.user.name,
+        message.content,
+        conversationId,
+        message.user.avatar
+      );
+    } catch (error) {
+      console.error("Error showing message notification:", error);
+    }
+  }
+
+  /**
+   * Get current user ID from auth store
+   */
+  private static getCurrentUserId(): string | null {
+    if (typeof window !== "undefined") {
+      try {
+        // Get auth data from Zustand persist storage
+        const authStorage = localStorage.getItem("auth-storage");
+        if (authStorage) {
+          const authData = JSON.parse(authStorage);
+          if (authData.state && authData.state.user && authData.state.user.id) {
+            return authData.state.user.id;
+          }
+        }
+      } catch (error) {
+        console.error("Error getting current user ID:", error);
+      }
+    }
+    return null;
   }
 
   /**
