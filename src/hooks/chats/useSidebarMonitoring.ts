@@ -136,8 +136,6 @@ export function useSidebarMonitoring({
       lastLoadTimeRef.current = now;
       lastConversationIdsRef.current = conversationIdsKey;
     } catch (error) {
-      console.error("Error loading sidebar data:", error);
-
       // Fallback to individual conversation data
       conversations.forEach((conversation) => {
         lastMessagesMap.set(conversation.id, "No messages yet");

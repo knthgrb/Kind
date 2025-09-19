@@ -67,7 +67,6 @@ export class ReportingService {
         reportId: report.id,
       };
     } catch (error) {
-      console.error("Error reporting user:", error);
       throw error;
     }
   }
@@ -85,7 +84,6 @@ export class ReportingService {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error getting user reports:", error);
       return [];
     }
 
@@ -106,7 +104,6 @@ export class ReportingService {
     );
 
     if (userError) {
-      console.error("Error fetching user details:", userError);
       return data.map((report) => ({
         ...report,
         reported_user: null,
@@ -146,7 +143,6 @@ export class ReportingService {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error getting pending reports:", error);
       return [];
     }
 
@@ -170,7 +166,6 @@ export class ReportingService {
     );
 
     if (userError) {
-      console.error("Error fetching user details:", userError);
       return data.map((report) => ({
         ...report,
         reporter: null,
@@ -253,7 +248,6 @@ export class ReportingService {
         message: `Report ${resolution} successfully`,
       };
     } catch (error) {
-      console.error("Error resolving report:", error);
       throw error;
     }
   }

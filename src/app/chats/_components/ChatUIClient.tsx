@@ -324,7 +324,6 @@ export default function ChatUIClient({
           // Redirect to the default conversation
           router.push(`/chats/${defaultConversationId}`);
         } catch (error) {
-          console.error("Error getting last sent conversation:", error);
           // Fallback to first conversation
           const firstConversationId = conversations[0].id;
           setSelectedConversationId(firstConversationId);
@@ -865,11 +864,18 @@ export default function ChatUIClient({
           </div>
           <hr className="text-gray-200" />
           {/* Input */}
-          <div className="p-3 flex items-center gap-2 bg-[#f5f6fa]">
+          <div className="p-3 flex items-center gap-2 bg-[#f5f6fa] relative">
+            {/* Disable overlay when sending */}
+            {isSending && (
+              <div className="absolute inset-0 bg-gray-300/30 backdrop-blur-[1px] z-10 rounded-lg" />
+            )}
             {/* File attachment button */}
             <button
               onClick={() => setFileModalOpen(true)}
-              className="p-2 bg-[#f5f6f9] rounded hover:bg-gray-200 cursor-pointer"
+              disabled={isSending}
+              className={`p-2 bg-[#f5f6f9] rounded hover:bg-gray-200 ${
+                isSending ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+              }`}
               title="Attach files"
             >
               <img src="/icons/plus.png" alt="attach" className="w-4 h-4" />
@@ -880,18 +886,29 @@ export default function ChatUIClient({
               <input
                 type="text"
                 placeholder="Type message here..."
-                className="flex-1 p-2 outline-none text-[clamp(0.663rem,0.8rem,0.9rem)] text-[#757589]"
+                disabled={isSending}
+                className={`flex-1 p-2 outline-none text-[clamp(0.663rem,0.8rem,0.9rem)] text-[#757589] ${
+                  isSending ? "opacity-50 cursor-not-allowed" : ""
+                }`}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !isSending && sendMessage()
+                }
                 onFocus={() => setEmojiPickerOpen(false)}
               />
               <div className="relative emoji-picker-container">
                 <img
                   src="/icons/emoji.png"
                   alt="emoji"
-                  className="w-4 h-4 cursor-pointer"
-                  onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
+                  className={`w-4 h-4 ${
+                    isSending
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-pointer"
+                  }`}
+                  onClick={() =>
+                    !isSending && setEmojiPickerOpen(!emojiPickerOpen)
+                  }
                 />
                 {emojiPickerOpen && (
                   <>

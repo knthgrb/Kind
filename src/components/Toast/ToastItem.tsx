@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useToast, Toast } from "@/contexts/ToastContext";
+import { useToastActions } from "@/stores/useToastStore";
+import { Toast } from "@/types/notification";
 import {
   IoCheckmarkCircle,
   IoCloseCircle,
@@ -14,7 +15,7 @@ interface ToastItemProps {
 }
 
 export default function ToastItem({ toast }: ToastItemProps) {
-  const { removeToast } = useToast();
+  const { removeToast } = useToastActions();
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -32,40 +33,50 @@ export default function ToastItem({ toast }: ToastItemProps) {
 
   const getToastStyles = () => {
     const baseStyles =
-      "relative shadow-lg bg-white p-4 transition-all duration-300 transform";
+      "relative shadow-lg bg-white text-gray-900 p-4 transition-all duration-300 transform";
+
+    // Type-based left border colors
+    const typeStyles = {
+      success: "border-l-8 border-green-500",
+      error: "border-l-8 border-red-500",
+      warning: "border-l-8 border-yellow-500",
+      info: "border-l-8 border-blue-500",
+    };
+
+    const typeStyle = typeStyles[toast.type];
+
+    // Priority-based shadow styling
+    const priorityStyles = {
+      urgent: "shadow-gray-200",
+      high: "shadow-gray-200",
+      normal: "shadow-gray-200",
+      low: "shadow-gray-100",
+    };
+
+    const priorityStyle = priorityStyles[toast.priority || "normal"];
 
     if (isExiting) {
-      return `${baseStyles} translate-x-full opacity-0`;
+      return `${baseStyles} ${typeStyle} ${priorityStyle} translate-y-full opacity-0`;
     }
 
     if (!isVisible) {
-      return `${baseStyles} translate-x-full opacity-0`;
+      return `${baseStyles} ${typeStyle} ${priorityStyle} translate-y-full opacity-0`;
     }
 
-    return `${baseStyles} translate-x-0 opacity-100`;
-  };
-
-  const getLeftBorderColor = () => {
-    const colors = {
-      success: "border-green-500",
-      error: "border-red-500",
-      warning: "border-yellow-500",
-      info: "border-blue-400",
-    };
-    return colors[toast.type];
+    return `${baseStyles} ${typeStyle} ${priorityStyle} translate-y-0 opacity-100`;
   };
 
   const getIconComponent = () => {
     const iconContainerStyles =
-      "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0";
-    const iconStyles = "w-5 h-5 text-white";
+      "w-8 h-8 flex items-center justify-center flex-shrink-0";
+    const iconStyles = "w-5 h-5";
 
-    const getIconContainerColor = () => {
+    const getIconColor = () => {
       const colors = {
-        success: "bg-green-500",
-        error: "bg-red-500",
-        warning: "bg-yellow-500",
-        info: "bg-blue-400",
+        success: "text-green-500",
+        error: "text-red-500",
+        warning: "text-yellow-500",
+        info: "text-blue-500",
       };
       return colors[toast.type];
     };
@@ -73,26 +84,28 @@ export default function ToastItem({ toast }: ToastItemProps) {
     switch (toast.type) {
       case "success":
         return (
-          <div className={`${iconContainerStyles} ${getIconContainerColor()}`}>
-            <IoCheckmarkCircle className={iconStyles} />
+          <div className={iconContainerStyles}>
+            <IoCheckmarkCircle className={`${iconStyles} ${getIconColor()}`} />
           </div>
         );
       case "error":
         return (
-          <div className={`${iconContainerStyles} ${getIconContainerColor()}`}>
-            <IoCloseCircle className={iconStyles} />
+          <div className={iconContainerStyles}>
+            <IoCloseCircle className={`${iconStyles} ${getIconColor()}`} />
           </div>
         );
       case "warning":
         return (
-          <div className={`${iconContainerStyles} ${getIconContainerColor()}`}>
-            <IoWarning className={iconStyles} />
+          <div className={iconContainerStyles}>
+            <IoWarning className={`${iconStyles} ${getIconColor()}`} />
           </div>
         );
       case "info":
         return (
-          <div className={`${iconContainerStyles} ${getIconContainerColor()}`}>
-            <IoInformationCircle className={iconStyles} />
+          <div className={iconContainerStyles}>
+            <IoInformationCircle
+              className={`${iconStyles} ${getIconColor()}`}
+            />
           </div>
         );
       default:
@@ -103,7 +116,7 @@ export default function ToastItem({ toast }: ToastItemProps) {
   // If custom content is provided, render it instead of the default layout
   if (toast.customContent) {
     return (
-      <div className={`${getToastStyles()} border-l-8 ${getLeftBorderColor()}`}>
+      <div className={getToastStyles()}>
         {/* Close button */}
         <button
           onClick={handleClose}
@@ -123,7 +136,7 @@ export default function ToastItem({ toast }: ToastItemProps) {
   }
 
   return (
-    <div className={`${getToastStyles()} border-l-8 ${getLeftBorderColor()}`}>
+    <div className={getToastStyles()}>
       {/* Close button */}
       <button
         onClick={handleClose}
@@ -153,7 +166,7 @@ export default function ToastItem({ toast }: ToastItemProps) {
                 toast.action!.onClick();
                 handleClose();
               }}
-              className="mt-2 text-sm font-medium text-[#cc0000] hover:text-red-800 hover:underline focus:outline-none focus:underline"
+              className="mt-2 text-sm font-medium text-blue-600 underline hover:no-underline focus:outline-none transition-all duration-200"
             >
               {toast.action.label}
             </button>
@@ -165,7 +178,7 @@ export default function ToastItem({ toast }: ToastItemProps) {
       {toast.duration && toast.duration > 0 && !toast.persistent && (
         <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 overflow-hidden">
           <div
-            className={`h-full transition-all ease-linear ${getLeftBorderColor()}`}
+            className="h-full bg-current transition-all ease-linear opacity-30"
             style={{
               animation: `shrink ${toast.duration}ms linear forwards`,
             }}

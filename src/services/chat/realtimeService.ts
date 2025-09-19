@@ -1,7 +1,6 @@
 import { createClient } from "@/utils/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { Message, Conversation } from "./chatService";
-import { PushNotificationService } from "@/services/notifications/pushNotificationService";
 
 export interface ChatMessage {
   id: string;
@@ -96,7 +95,6 @@ export class RealtimeService {
           .channel(channelName)
           .on("broadcast", { event: "message" }, (payload) => {
             const message = payload.payload as ChatMessage;
-            this.showMessageNotification(message, conversationId);
 
             // Call all callbacks for this conversation
             const callbacks = this.subscriptionCallbacks.get(conversationId);
@@ -469,65 +467,6 @@ export class RealtimeService {
 
       checkChannel();
     });
-  }
-
-  /**
-   * Show notification for incoming messages (similar to sidebar monitoring pattern)
-   */
-  private static async showMessageNotification(
-    message: ChatMessage,
-    conversationId: string
-  ) {
-    try {
-      // Check if notifications are enabled
-      const isEnabled = PushNotificationService.isEnabled();
-      if (!isEnabled) {
-        return;
-      }
-
-      // Check if the message is from the current user (don't notify for own messages)
-      const currentUserId = this.getCurrentUserId();
-      if (currentUserId && message.user.id === currentUserId) {
-        return;
-      }
-
-      // Check if the page is visible (don't notify if user is actively viewing)
-      const isHidden = document.hidden;
-      if (!isHidden) {
-        return;
-      }
-
-      // Show the actual notification only if page is hidden
-      await PushNotificationService.showChatNotification(
-        message.user.name,
-        message.content,
-        conversationId,
-        message.user.avatar
-      );
-    } catch (error) {
-      // Silent error handling for notification failures
-    }
-  }
-
-  /**
-   * Get current user ID from auth store
-   */
-  private static getCurrentUserId(): string | null {
-    if (typeof window !== "undefined") {
-      try {
-        // Get auth data from Zustand persist storage
-        const authStorage = localStorage.getItem("auth-storage");
-        if (authStorage) {
-          const authData = JSON.parse(authStorage);
-          if (authData.state && authData.state.user && authData.state.user.id) {
-            return authData.state.user.id;
-          }
-        }
-      } catch (error) {
-        // Silent error handling for user ID retrieval
-      }
-    }
-    return null;
   }
 
   /**

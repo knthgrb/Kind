@@ -61,7 +61,6 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
 
       setConversations(filteredConversations);
     } catch (error) {
-      console.error("Error loading conversations:", error);
       setError(error as Error);
     } finally {
       isLoadingRef.current = false;

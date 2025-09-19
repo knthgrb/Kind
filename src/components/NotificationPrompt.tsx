@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { HiOutlineBell, HiX } from "react-icons/hi";
-import { PushNotificationService } from "@/services/notifications/pushNotificationService";
+import { NotificationService } from "@/services/notifications/NotificationService";
 
 interface NotificationPromptProps {
   onPermissionChange?: (granted: boolean) => void;
@@ -19,11 +19,11 @@ export default function NotificationPrompt({
 
   useEffect(() => {
     // Check if notifications are supported
-    const supported = PushNotificationService.isNotificationSupported();
+    const supported = typeof window !== "undefined" && "Notification" in window;
     setIsSupported(supported);
 
     if (supported) {
-      const currentPermission = PushNotificationService.getPermissionStatus();
+      const currentPermission = NotificationService.getPermissionStatus();
       setPermission(currentPermission);
       // Show prompt if permission is default (not asked yet) or denied
       setShowPrompt(
@@ -35,15 +35,12 @@ export default function NotificationPrompt({
   const handleEnableNotifications = async () => {
     setIsLoading(true);
     try {
-      const newPermission = await PushNotificationService.requestPermission();
+      const newPermission = await NotificationService.requestPermission();
       setPermission(newPermission);
       setShowPrompt(false);
       onPermissionChange?.(newPermission === "granted");
 
-      if (newPermission === "granted") {
-        // Initialize the notification service
-        await PushNotificationService.initialize();
-      }
+      // No separate initialization needed - NotificationService handles everything
     } catch (error) {
       console.error("Error enabling notifications:", error);
     } finally {
@@ -57,7 +54,7 @@ export default function NotificationPrompt({
 
   const handleTestNotification = async () => {
     if (permission === "granted") {
-      await PushNotificationService.testNotification();
+      await NotificationService.testNotification();
     }
   };
 
@@ -122,11 +119,11 @@ export function NotificationStatus() {
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    const supported = PushNotificationService.isNotificationSupported();
+    const supported = typeof window !== "undefined" && "Notification" in window;
     setIsSupported(supported);
 
     if (supported) {
-      const currentPermission = PushNotificationService.getPermissionStatus();
+      const currentPermission = NotificationService.getPermissionStatus();
       setPermission(currentPermission);
     }
   }, []);
@@ -139,7 +136,7 @@ export function NotificationStatus() {
 
   const handleTest = async () => {
     if (permission === "granted") {
-      await PushNotificationService.testNotification();
+      await NotificationService.testNotification();
     }
   };
 

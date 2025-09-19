@@ -42,7 +42,6 @@ export function useConversationDetails({
       );
       setConversation(conversationData);
     } catch (error) {
-      console.error("Error loading conversation details:", error);
       setError(error as Error);
     } finally {
       setIsLoading(false);

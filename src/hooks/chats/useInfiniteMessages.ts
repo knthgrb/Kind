@@ -303,6 +303,32 @@ export function useInfiniteMessages({
       setIsSending(true);
       setSendError(null);
 
+      // Create optimistic message immediately
+      const optimisticMessage: ChatMessage = {
+        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        content: content.trim(),
+        user: {
+          id: user.id,
+          name: `${userMetadata?.first_name || "Unknown"} ${
+            userMetadata?.last_name || "User"
+          }`,
+          avatar:
+            (user as { profile_image_url?: string }).profile_image_url ||
+            undefined,
+        },
+        createdAt: new Date().toISOString(),
+        conversationId: conversationId,
+        messageType: messageType,
+        fileUrl: fileUrl || null,
+      };
+
+      // Add optimistic message immediately
+      setMessages((prevMessages) => {
+        const newMessages = [...prevMessages, optimisticMessage];
+        onMessage?.(newMessages);
+        return newMessages;
+      });
+
       try {
         // Check if the other user is blocked before sending
         const otherUserId = await ChatService.getOtherUserId(
@@ -316,12 +342,19 @@ export function useInfiniteMessages({
           );
           if (isBlocked) {
             setSendError(new Error("Cannot send message to blocked user"));
+            // Remove optimistic message on error
+            setMessages((prevMessages) =>
+              prevMessages.filter((msg) => msg.id !== optimisticMessage.id)
+            );
             return;
           }
         }
 
-        // First save to database
-        const newMessage = await ChatService.sendMessage(
+        // Use server action that includes notification creation
+        const { sendMessage: sendMessageAction } = await import(
+          "@/app/_actions/chat/send-message"
+        );
+        const newMessage = await sendMessageAction(
           conversationId,
           user.id,
           content.trim(),
@@ -338,8 +371,11 @@ export function useInfiniteMessages({
             (user as { profile_image_url?: string }).profile_image_url || null,
         });
 
+        // Replace optimistic message with real message
         setMessages((prevMessages) => {
-          const newMessages = [...prevMessages, chatMessage];
+          const newMessages = prevMessages.map((msg) =>
+            msg.id === optimisticMessage.id ? chatMessage : msg
+          );
           onMessage?.(newMessages);
           return newMessages;
         });
@@ -347,7 +383,7 @@ export function useInfiniteMessages({
         try {
           await RealtimeService.sendMessage(conversationId, chatMessage);
         } catch (broadcastError) {
-          console.error("Message broadcast failed:", broadcastError);
+          // Silent error handling for broadcast failures
         }
 
         try {
@@ -357,6 +393,10 @@ export function useInfiniteMessages({
         }
       } catch (err) {
         setSendError(err as Error);
+        // Remove optimistic message on error
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg.id !== optimisticMessage.id)
+        );
       } finally {
         setIsSending(false);
       }
