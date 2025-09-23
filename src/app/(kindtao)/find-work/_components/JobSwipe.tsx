@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { JobPost } from "@/types/jobPosts";
 import JobCardMobile from "@/components/jobs/JobCardMobile";
 import JobSearch, { Filters } from "@/components/jobs/JobSearch";
-import { JobService } from "@/services/JobService";
+import { SwipeService } from "@/services/SwipeService";
+import SwipeLimitModal from "@/components/SwipeLimitModal";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 type JobSwipeProps = {
   initialJobs: JobPost[];
@@ -14,8 +16,11 @@ type JobSwipeProps = {
   jobTypes: string[];
   payTypes: string[];
   initialFilters?: Filters;
-  onApply?: (job: JobPost) => void;
-  onSkip?: (job: JobPost) => void;
+  initialSwipeLimit?: {
+    remainingSwipes: number;
+    dailyLimit: number;
+    canSwipe: boolean;
+  };
 };
 
 export default function JobSwipe({
@@ -25,16 +30,22 @@ export default function JobSwipe({
   jobTypes,
   payTypes,
   initialFilters,
-  onApply,
-  onSkip,
+  initialSwipeLimit,
 }: JobSwipeProps) {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [cards, setCards] = useState<JobPost[]>(initialJobs);
   const [activeIndex, setActiveIndex] = useState(initialJobs.length - 1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [swipeLimit, setSwipeLimit] = useState(initialSwipeLimit || {
+    remainingSwipes: 0,
+    dailyLimit: 10,
+    canSwipe: false
+  });
+  const [showSwipeLimitModal, setShowSwipeLimitModal] = useState(false);
   const isApplyingRef = useRef(false);
   const startX = useRef(0);
   const startY = useRef(0);
@@ -89,6 +100,7 @@ export default function JobSwipe({
       setLoading(false);
     }
   };
+
 
   // Load more jobs function
   const loadMore = async () => {
@@ -152,7 +164,7 @@ export default function JobSwipe({
     setOffset({ x: dx, y: limitedY });
   };
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback(async () => {
     if (!isDragging || isAnimating || isApplying || isApplyingRef.current) {
       return;
     }
@@ -186,11 +198,27 @@ export default function JobSwipe({
       offset.x > SWIPE_THRESHOLD ||
       (offset.x > 50 && velocity > VELOCITY_THRESHOLD)
     ) {
-      // Swipe right = apply
+        // Swipe right = apply - use swipe credit
+        const swipeResult = await SwipeService.consumeSwipeCredit(user?.id || '');
+      if (!swipeResult.canSwipe) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+      
+      // Update swipe limit display
+      setSwipeLimit({
+        remainingSwipes: swipeResult.remainingSwipes,
+        dailyLimit: swipeResult.dailyLimit,
+        canSwipe: swipeResult.canSwipe
+      });
+      
       setIsApplying(true);
       isApplyingRef.current = true;
-      animateCardExit("right", () => {
-        onApply?.(currentJob);
+      animateCardExit("right", async () => {
+        // Record the swipe action
+        await SwipeService.recordSwipeClient(user?.id || '', currentJob.id, 'apply');
+        
+        // Apply action handled internally
         // Navigate to apply page
         router.push(`/apply?jobId=${currentJob.id}`);
         removeCard();
@@ -205,9 +233,25 @@ export default function JobSwipe({
       offset.x < -SWIPE_THRESHOLD ||
       (offset.x < -50 && velocity > VELOCITY_THRESHOLD)
     ) {
-      // Swipe left = skip
-      animateCardExit("left", () => {
-        onSkip?.(currentJob);
+        // Swipe left = skip - use swipe credit
+        const swipeResult = await SwipeService.consumeSwipeCredit(user?.id || '');
+      if (!swipeResult.canSwipe) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+      
+      // Update swipe limit display
+      setSwipeLimit({
+        remainingSwipes: swipeResult.remainingSwipes,
+        dailyLimit: swipeResult.dailyLimit,
+        canSwipe: swipeResult.canSwipe
+      });
+      
+      animateCardExit("left", async () => {
+        // Record the swipe action
+        await SwipeService.recordSwipeClient(user?.id || '', currentJob.id, 'skip');
+        
+        // Skip action handled internally
         removeCard();
       });
       return;
@@ -219,12 +263,11 @@ export default function JobSwipe({
     offset.x,
     cards,
     activeIndex,
-    onApply,
-    onSkip,
     isDragging,
     isAnimating,
     isApplying,
     router,
+    user,
   ]);
 
   const animateCardExit = (
@@ -321,6 +364,16 @@ export default function JobSwipe({
           onSearch={handleFilterChange}
           initialFilters={initialFilters}
         />
+        
+        {/* Swipe Limit Display */}
+        <div className="mt-4 text-center">
+          <div className="inline-flex items-center space-x-2 bg-gray-100 rounded-full px-4 py-2">
+            <span className="text-sm text-gray-600">Swipes left:</span>
+            <span className={`text-sm font-semibold ${swipeLimit.remainingSwipes > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {swipeLimit.remainingSwipes} / {swipeLimit.dailyLimit}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Swiper Container */}
@@ -407,7 +460,7 @@ export default function JobSwipe({
                     if (isApplying || isApplyingRef.current) return;
                     setIsApplying(true);
                     isApplyingRef.current = true;
-                    onApply?.(j);
+                    // Apply action handled internally
                     router.push(`/apply?jobId=${j.id}`);
                     removeCard();
                     // Keep isApplying true for a bit longer to prevent any additional swipes
@@ -417,7 +470,7 @@ export default function JobSwipe({
                     }, 1000);
                   }}
                   onSkip={(j) => {
-                    onSkip?.(j);
+                    // Skip action handled internally
                     removeCard();
                   }}
                 />
@@ -436,6 +489,18 @@ export default function JobSwipe({
           </div>
         )}
       </div>
+
+      {/* Swipe Limit Modal */}
+      <SwipeLimitModal
+        isOpen={showSwipeLimitModal}
+        onClose={() => setShowSwipeLimitModal(false)}
+        remainingSwipes={swipeLimit.remainingSwipes}
+        dailyLimit={swipeLimit.dailyLimit}
+        onUpgrade={() => {
+          // TODO: Implement upgrade functionality
+          console.log("Upgrade clicked");
+        }}
+      />
     </div>
   );
 }

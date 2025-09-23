@@ -11,6 +11,11 @@ type JobSwipeWrapperProps = {
   jobTypes: string[];
   payTypes: string[];
   initialFilters?: Filters;
+  initialSwipeLimit?: {
+    remainingSwipes: number;
+    dailyLimit: number;
+    canSwipe: boolean;
+  };
 };
 
 export default function JobSwipeWrapper({
@@ -20,25 +25,8 @@ export default function JobSwipeWrapper({
   jobTypes,
   payTypes,
   initialFilters,
+  initialSwipeLimit,
 }: JobSwipeWrapperProps) {
-  const handleApply = (job: JobPost) => {
-    console.log("Apply:", job);
-    // TODO: Implement actual apply logic
-    // This could be:
-    // - Save to user's applied jobs
-    // - Send notification to job poster
-    // - Navigate to application form
-  };
-
-  const handleSkip = (job: JobPost) => {
-    console.log("Skip:", job);
-    // TODO: Implement actual skip logic
-    // This could be:
-    // - Save to user's skipped jobs
-    // - Update recommendation algorithm
-    // - Track user preferences
-  };
-
   return (
     <JobSwipe
       initialJobs={initialJobs}
@@ -47,8 +35,7 @@ export default function JobSwipeWrapper({
       jobTypes={jobTypes}
       payTypes={payTypes}
       initialFilters={initialFilters}
-      onApply={handleApply}
-      onSkip={handleSkip}
+      initialSwipeLimit={initialSwipeLimit}
     />
   );
 }

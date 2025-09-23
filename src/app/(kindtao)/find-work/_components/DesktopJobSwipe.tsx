@@ -4,20 +4,20 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { JobPost } from "@/types/jobPosts";
 import { JobService } from "@/services/JobService";
-import { useAuth } from "@/hooks/useAuth";
+import { SwipeService } from "@/services/SwipeService";
+import { useAuthStore } from "@/stores/useAuthStore";
 import {
   FaChevronLeft,
   FaChevronRight,
-  FaHeart,
+  FaPaperPlane,
   FaTimes,
-  FaMapMarkerAlt,
   FaClock,
   FaUser,
-  FaDollarSign,
 } from "react-icons/fa";
 import { SlLocationPin } from "react-icons/sl";
 import Image from "next/image";
 import { salaryFormatter, salaryRateFormatter } from "@/utils/salaryFormatter";
+import SwipeLimitModal from "@/components/SwipeLimitModal";
 
 type MatchingScore = {
   jobId: string;
@@ -39,19 +39,21 @@ type DesktopJobSwipeProps = {
   initialJobs: JobPost[];
   initialMatchingScores?: MatchingScore[];
   pageSize: number;
-  onApply?: (job: JobPost) => void;
-  onSkip?: (job: JobPost) => void;
+  initialSwipeLimit?: {
+    remainingSwipes: number;
+    dailyLimit: number;
+    canSwipe: boolean;
+  };
 };
 
 export default function DesktopJobSwipe({
   initialJobs,
   initialMatchingScores = [],
   pageSize,
-  onApply,
-  onSkip,
+  initialSwipeLimit,
 }: DesktopJobSwipeProps) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuthStore();
   const [jobs, setJobs] = useState<JobPost[]>(initialJobs);
   const [matchingScores, setMatchingScores] = useState<MatchingScore[]>(
     initialMatchingScores
@@ -61,36 +63,17 @@ export default function DesktopJobSwipe({
   const [hasMore, setHasMore] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [swipeLimit, setSwipeLimit] = useState(initialSwipeLimit || {
+    remainingSwipes: 0,
+    dailyLimit: 10,
+    canSwipe: false
+  });
+  const [showSwipeLimitModal, setShowSwipeLimitModal] = useState(false);
   const loadingRef = useRef(false);
   const lastLoadedIndex = useRef(0);
 
-  // Load more jobs when we're running low
-  useEffect(() => {
-    // Only load more if we're near the end, have more jobs available, not currently loading, and not on the very last job
-    const shouldLoadMore =
-      currentIndex >= jobs.length - 3 &&
-      hasMore &&
-      !loading &&
-      !loadingRef.current &&
-      currentIndex < jobs.length - 1 &&
-      jobs.length > 0 &&
-      currentIndex > lastLoadedIndex.current;
-
-    if (shouldLoadMore) {
-      lastLoadedIndex.current = currentIndex;
-      loadMore();
-    }
-  }, [currentIndex, jobs.length, hasMore, loading]);
-
-  // Prevent infinite loops by ensuring hasMore is set to false when no more jobs
-  useEffect(() => {
-    if (jobs.length === 0 && !loading && !loadingRef.current) {
-      setHasMore(false);
-    }
-  }, [jobs.length, loading]);
-
   // Load more jobs function
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (loading || !hasMore || !user || loadingRef.current) return;
 
     loadingRef.current = true;
@@ -152,29 +135,108 @@ export default function DesktopJobSwipe({
       setLoading(false);
       loadingRef.current = false;
     }
-  };
+  }, [loading, hasMore, user, jobs.length, pageSize]);
 
-  // Navigation functions
-  const goToNext = useCallback(() => {
+  // Load more jobs when we're running low
+  useEffect(() => {
+    // Only load more if we're near the end, have more jobs available, not currently loading, and not on the very last job
+    const shouldLoadMore =
+      currentIndex >= jobs.length - 3 &&
+      hasMore &&
+      !loading &&
+      !loadingRef.current &&
+      currentIndex < jobs.length - 1 &&
+      jobs.length > 0 &&
+      currentIndex > lastLoadedIndex.current;
+
+    if (shouldLoadMore) {
+      lastLoadedIndex.current = currentIndex;
+      loadMore();
+    }
+  }, [currentIndex, jobs.length, hasMore, loading, loadMore]);
+
+  // Prevent infinite loops by ensuring hasMore is set to false when no more jobs
+  useEffect(() => {
+    if (jobs.length === 0 && !loading && !loadingRef.current) {
+      setHasMore(false);
+    }
+  }, [jobs.length, loading]);
+
+  // Navigation functions - now consume swipe credits
+  const goToNext = useCallback(async () => {
     if (currentIndex < jobs.length - 1) {
+      // Use swipe credit and check if allowed
+      const swipeResult = await SwipeService.consumeSwipeCredit(user?.id || '');
+      if (!swipeResult.canSwipe) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+      
+      // Update swipe limit display
+      setSwipeLimit({
+        remainingSwipes: swipeResult.remainingSwipes,
+        dailyLimit: swipeResult.dailyLimit,
+        canSwipe: swipeResult.canSwipe
+      });
+      
+      // Record as a skip action
+      if (user && jobs[currentIndex]) {
+        await SwipeService.recordSwipeClient(user.id, jobs[currentIndex].id, 'skip');
+      }
+      
       setCurrentIndex(currentIndex + 1);
     }
-  }, [currentIndex, jobs.length]);
+  }, [currentIndex, user, jobs]);
 
-  const goToPrevious = useCallback(() => {
+  const goToPrevious = useCallback(async () => {
     if (currentIndex > 0) {
+      // Use swipe credit and check if allowed
+      const swipeResult = await SwipeService.consumeSwipeCredit(user?.id || '');
+      if (!swipeResult.canSwipe) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+      
+      // Update swipe limit display
+      setSwipeLimit({
+        remainingSwipes: swipeResult.remainingSwipes,
+        dailyLimit: swipeResult.dailyLimit,
+        canSwipe: swipeResult.canSwipe
+      });
+      
+      // Record as a skip action
+      if (user && jobs[currentIndex]) {
+        await SwipeService.recordSwipeClient(user.id, jobs[currentIndex].id, 'skip');
+      }
+      
       setCurrentIndex(currentIndex - 1);
     }
-  }, [currentIndex]);
+  }, [currentIndex, user, jobs]);
 
   // Action functions
   const handleApply = useCallback(
     async (job: JobPost) => {
       if (isApplying || isSkipping) return;
 
+      // Use swipe credit and check if allowed
+      const swipeResult = await SwipeService.consumeSwipeCredit(user?.id || '');
+      if (!swipeResult.canSwipe) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+
+      // Update swipe limit display
+      setSwipeLimit({
+        remainingSwipes: swipeResult.remainingSwipes,
+        dailyLimit: swipeResult.dailyLimit,
+        canSwipe: swipeResult.canSwipe
+      });
+
       setIsApplying(true);
       try {
-        onApply?.(job);
+        // Record the swipe action
+        await SwipeService.recordSwipeClient(user?.id || '', job.id, 'apply');
+        
         // Navigate to apply page
         router.push(`/apply?jobId=${job.id}`);
         // Move to next job after a short delay
@@ -187,16 +249,32 @@ export default function DesktopJobSwipe({
         setIsApplying(false);
       }
     },
-    [isApplying, isSkipping, onApply, router, goToNext]
+    [isApplying, isSkipping, router, goToNext, user]
   );
 
   const handleSkip = useCallback(
     async (job: JobPost) => {
       if (isApplying || isSkipping) return;
 
+      // Use swipe credit and check if allowed
+      const swipeResult = await SwipeService.consumeSwipeCredit(user?.id || '');
+      if (!swipeResult.canSwipe) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+
+      // Update swipe limit display
+      setSwipeLimit({
+        remainingSwipes: swipeResult.remainingSwipes,
+        dailyLimit: swipeResult.dailyLimit,
+        canSwipe: swipeResult.canSwipe
+      });
+
       setIsSkipping(true);
       try {
-        onSkip?.(job);
+        // Record the swipe action
+        await SwipeService.recordSwipeClient(user?.id || '', job.id, 'skip');
+        
         // Move to next job after a short delay
         setTimeout(() => {
           goToNext();
@@ -207,15 +285,17 @@ export default function DesktopJobSwipe({
         setIsSkipping(false);
       }
     },
-    [isApplying, isSkipping, onSkip, goToNext]
+    [isApplying, isSkipping, goToNext, user]
   );
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
+        e.preventDefault();
         goToPrevious();
       } else if (e.key === "ArrowRight") {
+        e.preventDefault();
         goToNext();
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
@@ -223,6 +303,7 @@ export default function DesktopJobSwipe({
           handleApply(jobs[currentIndex]);
         }
       } else if (e.key === "Escape") {
+        e.preventDefault();
         if (jobs[currentIndex]) {
           handleSkip(jobs[currentIndex]);
         }
@@ -266,22 +347,8 @@ export default function DesktopJobSwipe({
             No jobs found
           </h3>
           <p className="text-gray-600 mb-4">
-            Try adjusting your search criteria or clear all filters.
+            Try refreshing the page or check back later for new job postings.
           </p>
-          <button
-            onClick={() =>
-              setFilters({
-                tags: [],
-                location: "All",
-                jobType: "All",
-                payType: "All",
-                keyword: "",
-              })
-            }
-            className="px-4 py-2 bg-[#CC0000] text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Clear All Filters
-          </button>
         </div>
       </div>
     );
@@ -296,11 +363,19 @@ export default function DesktopJobSwipe({
     <div className="w-full">
       {/* Main Swipe Container */}
       <div className="relative w-full max-w-4xl mx-auto">
-        {/* Job Counter */}
+        {/* Job Counter and Swipe Limit */}
         <div className="text-center mb-6">
-          <span className="text-sm text-gray-600">
-            {currentIndex + 1} of {jobs.length} jobs
-          </span>
+          <div className="flex items-center justify-center space-x-4">
+            <span className="text-sm text-gray-600">
+              {currentIndex + 1} of {jobs.length} jobs
+            </span>
+            <div className="flex items-center space-x-2 text-sm">
+              <span className="text-gray-500">Swipes left:</span>
+              <span className={`font-semibold ${swipeLimit.remainingSwipes > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {swipeLimit.remainingSwipes} / {swipeLimit.dailyLimit}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Job Card */}
@@ -522,8 +597,9 @@ export default function DesktopJobSwipe({
                   onClick={() => handleApply(currentJob)}
                   disabled={isApplying || isSkipping}
                   className="flex items-center justify-center w-16 h-16 bg-[#CC0000] text-white rounded-full hover:bg-red-700 transition-colors disabled:opacity-50"
+                  title="Apply for this job"
                 >
-                  <FaHeart className="w-6 h-6" />
+                  <FaPaperPlane className="w-6 h-6" />
                 </button>
               </div>
 
@@ -544,6 +620,18 @@ export default function DesktopJobSwipe({
           </div>
         )}
       </div>
+
+      {/* Swipe Limit Modal */}
+      <SwipeLimitModal
+        isOpen={showSwipeLimitModal}
+        onClose={() => setShowSwipeLimitModal(false)}
+        remainingSwipes={swipeLimit.remainingSwipes}
+        dailyLimit={swipeLimit.dailyLimit}
+        onUpgrade={() => {
+          // TODO: Implement upgrade functionality
+          console.log("Upgrade clicked");
+        }}
+      />
     </div>
   );
 }

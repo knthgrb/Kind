@@ -22,23 +22,19 @@ type MatchingScore = {
 type Props = {
   jobs: JobPost[];
   matchingScores?: MatchingScore[];
+  initialSwipeLimit?: {
+    remainingSwipes: number;
+    dailyLimit: number;
+    canSwipe: boolean;
+  };
 };
 
 export default function JobsCarousel({
   jobs,
   matchingScores = [],
+  initialSwipeLimit,
 }: Props) {
   const PAGE_SIZE = 24;
-
-  const handleApply = (job: JobPost) => {
-    console.log("Apply:", job);
-    // TODO: Implement actual apply logic
-  };
-
-  const handleSkip = (job: JobPost) => {
-    console.log("Skip:", job);
-    // TODO: Implement actual skip logic
-  };
 
   return (
     <section className="px-4">
@@ -46,8 +42,7 @@ export default function JobsCarousel({
         initialJobs={jobs}
         initialMatchingScores={matchingScores}
         pageSize={PAGE_SIZE}
-        onApply={handleApply}
-        onSkip={handleSkip}
+        initialSwipeLimit={initialSwipeLimit}
       />
     </section>
   );

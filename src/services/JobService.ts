@@ -298,4 +298,5 @@ export class JobService {
   ): Promise<JobWithMatchingScore[]> {
     return JobMatchingService.getMatchedJobsClient(userId, limit, offset);
   }
+
 }

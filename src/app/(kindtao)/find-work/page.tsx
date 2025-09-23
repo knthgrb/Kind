@@ -1,4 +1,5 @@
 import { JobService } from "@/services/JobService";
+import { SwipeService } from "@/services/SwipeService";
 import JobsCarousel from "./_components/JobsCarousel";
 import JobSwipeWrapper from "./_components/JobSwipeWrapper";
 import { createClient } from "@/utils/supabase/server";
@@ -61,10 +62,14 @@ export default async function FindWorkPage({
     keyword: resolvedSearchParams.keyword || "",
   };
 
-  // Fetch matched jobs using the matching algorithm
-  const [matchedJobs, filterOptions] = await Promise.all([
+  // Serialize initialFilters to ensure it's a plain object
+  const serializedInitialFilters = JSON.parse(JSON.stringify(initialFilters));
+
+  // Fetch matched jobs using the matching algorithm and swipe limit status
+  const [matchedJobs, filterOptions, swipeLimitStatus] = await Promise.all([
     JobService.fetchMatchedJobs(user.id, PAGE_SIZE, 0),
     JobService.fetchJobFilterOptions(),
+    SwipeService.getSwipeLimitStatus(user.id),
   ]);
 
   // Convert matched jobs to plain objects for client components
@@ -99,6 +104,10 @@ export default async function FindWorkPage({
     }
   }));
 
+  // Ensure all data is properly serialized by using JSON.parse(JSON.stringify())
+  const serializedJobs = JSON.parse(JSON.stringify(jobs));
+  const serializedMatchingScores = JSON.parse(JSON.stringify(matchingScores));
+
   // Ensure filterOptions are properly serialized
   const serializedFilterOptions = {
     locations: Array.isArray(filterOptions.locations) ? filterOptions.locations.map(String) : [],
@@ -106,25 +115,41 @@ export default async function FindWorkPage({
     payTypes: Array.isArray(filterOptions.payTypes) ? filterOptions.payTypes.map(String) : [],
   };
 
+  // Serialize swipe limit status
+  const serializedSwipeLimit = JSON.parse(JSON.stringify({
+    remainingSwipes: Number(swipeLimitStatus.remainingSwipes),
+    dailyLimit: Number(swipeLimitStatus.dailyLimit),
+    canSwipe: Boolean(swipeLimitStatus.canSwipe),
+  }));
+
+  // Ensure all data is completely serializable
+  const finalJobs = JSON.parse(JSON.stringify(serializedJobs));
+  const finalMatchingScores = JSON.parse(JSON.stringify(serializedMatchingScores));
+  const finalSwipeLimit = JSON.parse(JSON.stringify(serializedSwipeLimit));
+  const finalFilterOptions = JSON.parse(JSON.stringify(serializedFilterOptions));
+  const finalInitialFilters = JSON.parse(JSON.stringify(serializedInitialFilters));
+
   return (
     <section>
       {/* Mobile swipe */}
       <div className="block sm:hidden">
         <JobSwipeWrapper
-          initialJobs={jobs}
-          pageSize={PAGE_SIZE}
-          locations={serializedFilterOptions.locations}
-          jobTypes={serializedFilterOptions.jobTypes}
-          payTypes={serializedFilterOptions.payTypes}
-          initialFilters={initialFilters}
+          initialJobs={finalJobs}
+          pageSize={Number(PAGE_SIZE)}
+          locations={finalFilterOptions.locations}
+          jobTypes={finalFilterOptions.jobTypes}
+          payTypes={finalFilterOptions.payTypes}
+          initialFilters={finalInitialFilters}
+          initialSwipeLimit={finalSwipeLimit}
         />
       </div>
 
             {/* Desktop carousel */}
             <div className="hidden sm:block">
               <JobsCarousel
-                jobs={jobs}
-                matchingScores={matchingScores}
+                jobs={finalJobs}
+                matchingScores={finalMatchingScores}
+                initialSwipeLimit={finalSwipeLimit}
               />
             </div>
     </section>
