@@ -98,7 +98,7 @@ export class JobMatchingService {
       const similarTypes = this.getSimilarJobTypes(job.job_type, profile.preferred_job_types);
       breakdown.jobTypeMatch = similarTypes * 15;
       if (similarTypes > 0) {
-        reasons.push(`Similar job type match: ${similarTypes * 100}%`);
+        reasons.push(`Similar job type match: ${(similarTypes * 100).toFixed(2)}%`);
       }
     }
     totalScore += breakdown.jobTypeMatch;
@@ -393,8 +393,9 @@ export class JobMatchingService {
     // Sort by matching score (highest first)
     jobsWithScores.sort((a, b) => b.matchingScore.score - a.matchingScore.score);
 
-    // Apply pagination
-    return jobsWithScores.slice(offset, offset + limit);
+    // Apply pagination and ensure serialization
+    const result = jobsWithScores.slice(offset, offset + limit);
+    return JSON.parse(JSON.stringify(result));
   }
 
   /**
@@ -447,8 +448,9 @@ export class JobMatchingService {
     // Sort by matching score (highest first)
     jobsWithScores.sort((a, b) => b.matchingScore.score - a.matchingScore.score);
 
-    // Apply pagination
-    return jobsWithScores.slice(offset, offset + limit);
+    // Apply pagination and ensure serialization
+    const result = jobsWithScores.slice(offset, offset + limit);
+    return JSON.parse(JSON.stringify(result));
   }
 
   /**

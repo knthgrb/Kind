@@ -1114,6 +1114,16 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   const [isAddingPref, setIsAddingPref] = useState(false);
   const [showRemovePrefConfirm, setShowRemovePrefConfirm] = useState<string | null>(null);
 
+  /* Salary Expectations */
+  const [editingSalary, setEditingSalary] = useState(false);
+  const [salaryMin, setSalaryMin] = useState<string>(() => {
+    return user.helper_profiles?.salary_expectation_min?.toString() || "";
+  });
+  const [salaryMax, setSalaryMax] = useState<string>(() => {
+    return user.helper_profiles?.salary_expectation_max?.toString() || "";
+  });
+  const [isUpdatingSalary, setIsUpdatingSalary] = useState(false);
+
   /* Profile Picture */
   const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
   const [showProfilePictureModal, setShowProfilePictureModal] = useState(false);
@@ -1407,6 +1417,92 @@ export default function ProfileClient({ user }: ProfileClientProps) {
     }
   };
 
+  /* Salary Expectations */
+  const updateSalary = async () => {
+    if (isUpdatingSalary) return;
+    
+    setIsUpdatingSalary(true);
+    try {
+      // Validate inputs
+      const minValue = salaryMin.trim() ? parseInt(salaryMin) : null;
+      const maxValue = salaryMax.trim() ? parseInt(salaryMax) : null;
+      
+      if (minValue && maxValue && minValue > maxValue) {
+        alert('Minimum salary cannot be greater than maximum salary.');
+        return;
+      }
+      
+      if (minValue && minValue < 0) {
+        alert('Salary values must be positive numbers.');
+        return;
+      }
+      
+      if (maxValue && maxValue < 0) {
+        alert('Salary values must be positive numbers.');
+        return;
+      }
+      
+      // Update database
+      const { createClient } = await import("@/utils/supabase/client");
+      const supabase = createClient();
+      
+      // Check if helper_profile exists, if not create it
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('helper_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking helper profile:', checkError);
+        alert(`Failed to check profile: ${checkError.message}`);
+        return;
+      }
+      
+      let result;
+      if (existingProfile) {
+        // Update existing record
+        result = await supabase
+          .from('helper_profiles')
+          .update({ 
+            salary_expectation_min: minValue,
+            salary_expectation_max: maxValue,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .select();
+      } else {
+        // Create new record
+        result = await supabase
+          .from('helper_profiles')
+          .insert({
+            user_id: user.id,
+            salary_expectation_min: minValue,
+            salary_expectation_max: maxValue,
+            skills: [],
+            experience_years: 0,
+            languages_spoken: ['English', 'Filipino'],
+            is_available_live_in: false,
+            preferred_work_radius: 20
+          })
+          .select();
+      }
+        
+      if (result.error) {
+        console.error('Error updating salary expectations:', result.error);
+        alert(`Failed to update salary expectations: ${result.error.message}`);
+      } else {
+        console.log('Salary expectations updated successfully:', result.data);
+        setEditingSalary(false);
+      }
+    } catch (error) {
+      console.error('Error updating salary expectations:', error);
+      alert('Failed to update salary expectations. Please try again.');
+    } finally {
+      setIsUpdatingSalary(false);
+    }
+  };
+
   /* Document Uploads */
   const [editingDocs, setEditingDocs] = useState(false);
   const [docs, setDocs] = useState<string[]>(() => {
@@ -1483,9 +1579,10 @@ export default function ProfileClient({ user }: ProfileClientProps) {
                         selectedDays.length > 0,
                         locs.length > 0,
                         prefs.length > 0,
+                        (salaryMin || salaryMax),
                         docs.length > 0 && docs[0] !== "/profile/id_placeholder_one.png"
                       ].filter(Boolean).length;
-                      return Math.round((completed / 8) * 100);
+                      return Math.round((completed / 9) * 100);
                     })()}%
                   </div>
                 </div>
@@ -2156,6 +2253,85 @@ export default function ProfileClient({ user }: ProfileClientProps) {
             )}
           </Card>
 
+          {/* Salary Expectations */}
+          <Card
+            title="Salary Expectations"
+            right={
+              <button
+                type="button"
+                aria-label="Edit salary expectations"
+                onClick={() => setEditingSalary((v) => !v)}
+                className="h-8 w-8 rounded-full border border-[#E5E7EB] flex items-center justify-center"
+              >
+                ✎
+              </button>
+            }
+          >
+            {!editingSalary ? (
+              <div className="space-y-2">
+                {salaryMin || salaryMax ? (
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-800">
+                      {salaryMin && salaryMax ? (
+                        <>₱{parseInt(salaryMin).toLocaleString()} - ₱{parseInt(salaryMax).toLocaleString()}</>
+                      ) : salaryMin ? (
+                        <>From ₱{parseInt(salaryMin).toLocaleString()}</>
+                      ) : salaryMax ? (
+                        <>Up to ₱{parseInt(salaryMax).toLocaleString()}</>
+                      ) : null}
+                    </div>
+                    <div className="text-gray-600 text-xs">
+                      {salaryMin && salaryMax ? 'Salary range' : salaryMin ? 'Minimum salary' : 'Maximum salary'}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm opacity-70">
+                    No salary expectations set
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block mb-1 profileSkills">Minimum Salary (₱)</label>
+                  <input
+                    type="number"
+                    value={salaryMin}
+                    onChange={(e) => setSalaryMin(e.target.value)}
+                    placeholder="e.g., 15000"
+                    className="w-full h-10 rounded-md border border-white bg-white px-3 outline-none"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 profileSkills">Maximum Salary (₱)</label>
+                  <input
+                    type="number"
+                    value={salaryMax}
+                    onChange={(e) => setSalaryMax(e.target.value)}
+                    placeholder="e.g., 25000"
+                    className="w-full h-10 rounded-md border border-white bg-white px-3 outline-none"
+                    min="0"
+                  />
+                </div>
+                <div className="text-xs text-gray-500">
+                  Leave fields empty if you don't want to set a minimum or maximum salary.
+                </div>
+                <div className="flex gap-3">
+                  <GhostButton onClick={() => setEditingSalary(false)}>
+                    Cancel
+                  </GhostButton>
+                  <RedButton 
+                    onClick={updateSalary}
+                    disabled={isUpdatingSalary}
+                  >
+                    {isUpdatingSalary ? 'Saving...' : 'Save'}
+                  </RedButton>
+                </div>
+              </div>
+            )}
+          </Card>
+
           {/* Document Uploads */}
           <Card
             title="Document Uploads"
@@ -2260,9 +2436,10 @@ export default function ProfileClient({ user }: ProfileClientProps) {
                     selectedDays.length > 0,
                     locs.length > 0,
                     prefs.length > 0,
+                    (salaryMin || salaryMax),
                     docs.length > 0 && docs[0] !== "/profile/id_placeholder_one.png"
                   ].filter(Boolean).length;
-                  return Math.round((completed / 8) * 100);
+                  return Math.round((completed / 9) * 100);
                 })()}% Complete
               </div>
               <div className="h-2 rounded-full bg-[#ECECEC] overflow-hidden">
@@ -2278,9 +2455,10 @@ export default function ProfileClient({ user }: ProfileClientProps) {
                         selectedDays.length > 0,
                         locs.length > 0,
                         prefs.length > 0,
+                        (salaryMin || salaryMax),
                         docs.length > 0 && docs[0] !== "/profile/id_placeholder_one.png"
                       ].filter(Boolean).length;
-                      return Math.round((completed / 8) * 100);
+                      return Math.round((completed / 9) * 100);
                     })()}%` 
                   }}
                 />
@@ -2294,6 +2472,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
               <li>{selectedDays.length > 0 ? "✔️" : "❌"} Availability</li>
               <li>{locs.length > 0 ? "✔️" : "❌"} Location Preference</li>
               <li>{prefs.length > 0 ? "✔️" : "❌"} Job Preferences</li>
+              <li>{(salaryMin || salaryMax) ? "✔️" : "❌"} Salary Expectations</li>
               <li>{docs.length > 0 && docs[0] !== "/profile/id_placeholder_one.png" ? "✔️" : "❌"} Document Uploads</li>
             </ul>
           </Card>
