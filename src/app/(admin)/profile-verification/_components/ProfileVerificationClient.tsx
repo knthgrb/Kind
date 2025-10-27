@@ -3,20 +3,26 @@
 import React, { useState } from "react";
 import EmployeeCard from "./EmployeeCard";
 import UserDetailsPopup from "./UserDetailsPopup";
-import { UserWithDocuments } from "@/services/ProfileVerificationService";
+import { UserWithDocuments } from "@/services/server/ProfileVerificationService";
 
 interface ProfileVerificationClientProps {
   users: UserWithDocuments[];
-  onApprove: (documentId: string) => Promise<{ success: boolean; error: string | null }>;
-  onReject: (documentId: string) => Promise<{ success: boolean; error: string | null }>;
+  onApprove: (
+    documentId: string
+  ) => Promise<{ success: boolean; error: string | null }>;
+  onReject: (
+    documentId: string
+  ) => Promise<{ success: boolean; error: string | null }>;
 }
 
-export default function ProfileVerificationClient({ 
-  users, 
-  onApprove, 
-  onReject 
+export default function ProfileVerificationClient({
+  users,
+  onApprove,
+  onReject,
 }: ProfileVerificationClientProps) {
-  const [selectedUser, setSelectedUser] = useState<UserWithDocuments | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithDocuments | null>(
+    null
+  );
   const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   const handleViewDetails = (user: UserWithDocuments) => {
@@ -34,10 +40,12 @@ export default function ProfileVerificationClient({
       <div className="px-6 pt-10 pb-16">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Profile Verification</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Profile Verification
+            </h1>
             <p className="text-gray-600">Review and verify user documents</p>
           </div>
-          
+
           <div className="border border-[#D9E0E8] rounded-lg px-8 py-6 bg-white">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {users.map((user) => (

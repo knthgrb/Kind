@@ -35,7 +35,6 @@ export async function getConversationUsers(
         subscription_tier: userData.user_metadata?.subscription_tier || "free",
         subscription_expires_at: null,
         swipe_credits: userData.user_metadata?.swipe_credits || 0,
-        boost_credits: userData.user_metadata?.boost_credits || 0,
         last_active: userData.updated_at || new Date().toISOString(),
         created_at: userData.created_at || new Date().toISOString(),
         updated_at: userData.updated_at || new Date().toISOString(),

@@ -1,7 +1,7 @@
 "use client";
 
-import JobCard from "@/components/jobs/JobCard";
-import Pagination from "@/components/Pagination";
+import JobCard from "@/app/jobs/_components/JobCard";
+import Pagination from "@/components/pagination/Pagination";
 import { JobPost } from "@/types/jobPosts";
 import { useRouter } from "next/navigation";
 

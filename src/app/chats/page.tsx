@@ -1,5 +1,18 @@
-import ChatsClient from "./_components/ChatsClient";
+import ChatUIClient from "./_components/ChatUIClient";
+import MobileChats from "./_components/MobileChats";
 
 export default function ChatsPage() {
-  return <ChatsClient />;
+  return (
+    <>
+      {/* Desktop/Tablet */}
+      <div className="hidden lg:block">
+        <ChatUIClient />
+      </div>
+
+      {/* Mobile */}
+      <div className="lg:hidden">
+        <MobileChats />
+      </div>
+    </>
+  );
 }

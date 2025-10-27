@@ -1,6 +1,6 @@
 "use server";
 
-import { UserVerificationService } from "@/services/UserVerificationService";
+import { UserVerificationService } from "@/services/server/UserVerificationService";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 
@@ -8,21 +8,27 @@ export async function approveDocument(documentId: string, notes?: string) {
   try {
     // Get current admin user
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError || !user) {
       return { success: false, error: "Authentication required" };
     }
 
     const { success, error } = await UserVerificationService.approveDocument(
-      documentId, 
-      user.id, 
+      documentId,
+      user.id,
       notes
     );
-    
+
     if (!success) {
       console.error("Error approving document:", error);
-      return { success: false, error: error?.message || "Failed to approve document" };
+      return {
+        success: false,
+        error: (error as Error)?.message || "Failed to approve document",
+      };
     }
 
     revalidatePath("/admin/profile-verification");
@@ -33,25 +39,34 @@ export async function approveDocument(documentId: string, notes?: string) {
   }
 }
 
-export async function rejectDocument(documentId: string, notes: string = "Document rejected by admin") {
+export async function rejectDocument(
+  documentId: string,
+  notes: string = "Document rejected by admin"
+) {
   try {
     // Get current admin user
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError || !user) {
       return { success: false, error: "Authentication required" };
     }
 
     const { success, error } = await UserVerificationService.rejectDocument(
-      documentId, 
-      user.id, 
+      documentId,
+      user.id,
       notes
     );
-    
+
     if (!success) {
       console.error("Error rejecting document:", error);
-      return { success: false, error: error?.message || "Failed to reject document" };
+      return {
+        success: false,
+        error: (error as Error)?.message || "Failed to reject document",
+      };
     }
 
     revalidatePath("/admin/profile-verification");

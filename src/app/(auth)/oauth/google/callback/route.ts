@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // If we need user to select a role first-time, send to select-role
     if (result.needsRoleSelection) {
-      return NextResponse.redirect(`${origin}/oauth/google/select-role`);
+      return NextResponse.redirect(`${origin}/select-role`);
     }
 
     // Redirect based on role
@@ -111,18 +111,6 @@ async function handleUserSetup(
 
     logger.debug("User created successfully with role:", finalRole);
 
-    // Insert family profile if kindbossing
-    if (finalRole === "kindbossing") {
-      const familyProfileResult = await createFamilyProfile(supabase, user.id);
-      if (familyProfileResult.error) {
-        logger.error(
-          "Error creating family profile:",
-          familyProfileResult.error
-        );
-        // Don't return error here, just log it - family profile can be created later
-      }
-    }
-
     // Update auth metadata with display name and role
     const displayName = `${userData.firstName} ${userData.lastName}`.trim();
     const { error: updateAuthError } = await supabase.auth.updateUser({
@@ -154,18 +142,6 @@ async function handleUserSetup(
 
     logger.debug("User role updated to:", finalRole);
 
-    // Insert family profile if kindbossing and doesn't exist
-    if (finalRole === "kindbossing") {
-      const familyProfileResult = await createFamilyProfile(supabase, user.id);
-      if (familyProfileResult.error) {
-        logger.error(
-          "Error creating family profile:",
-          familyProfileResult.error
-        );
-        // Don't return error here, just log it - family profile can be created later
-      }
-    }
-
     // Update auth metadata
     const { error: updateAuthError } = await supabase.auth.updateUser({
       data: { role: finalRole },
@@ -178,37 +154,6 @@ async function handleUserSetup(
   }
 
   return { error: null, role: finalRole, needsRoleSelection: false };
-}
-
-async function createFamilyProfile(supabase: any, userId: string) {
-  // First check if family profile already exists
-  const { data: existingProfile, error: checkError } = await supabase
-    .from("family_profiles")
-    .select("id")
-    .eq("user_id", userId)
-    .single();
-
-  if (checkError && checkError.code !== "PGRST116") {
-    // PGRST116 = no rows returned
-    return { error: checkError };
-  }
-
-  if (existingProfile) {
-    logger.debug("Family profile already exists for user:", userId);
-    return { error: null };
-  }
-
-  // Create family profile
-  const { error: insertError } = await supabase
-    .from("family_profiles")
-    .insert({ user_id: userId });
-
-  if (insertError) {
-    return { error: insertError };
-  }
-
-  logger.debug("Family profile created successfully for user:", userId);
-  return { error: null };
 }
 
 function extractUserDataFromGoogle(user: any) {
@@ -245,8 +190,8 @@ function getRedirectUrl(
     case "kindbossing":
       return `${origin}/kindbossing-onboarding/business-info`;
     case "kindtao":
-      return `${origin}/kindtao-onboarding/personal-info`;
+      return `${origin}/kindtao-onboarding`;
     default:
-      return `${origin}/oauth/google/select-role`;
+      return `${origin}/select-role`;
   }
 }

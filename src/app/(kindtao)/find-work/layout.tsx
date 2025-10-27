@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
-import Header from "../../(marketing)/_components/Header";
+import KindTaoHeader from "../_components/KindTaoHeader";
+import KindTaoBottomTabs from "../_components/KindTaoBottomTabs";
 
 export default function RootLayout({
   children,
@@ -8,8 +9,9 @@ export default function RootLayout({
 }>) {
   return (
     <>
-      <Header />
+      <KindTaoHeader />
       {children}
+      <KindTaoBottomTabs />
     </>
   );
 }

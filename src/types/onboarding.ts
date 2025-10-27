@@ -13,6 +13,11 @@ export interface PersonalInfoForm {
   year: string;
   gender: (typeof GENDER_OPTIONS)[number];
   location: (typeof LOCATION_OPTIONS)[number];
+  // Address fields (client-side form only; persisted via store on submit)
+  barangay: string;
+  municipality: string;
+  province: string;
+  zipCode: string;
 }
 
 // Skills & Availability Types
@@ -36,6 +41,10 @@ export interface WorkEntry {
   endMonth: string;
   endYear: string;
   description: string;
+  isCurrentJob: boolean;
+  location?: string;
+  skillsUsed?: string[];
+  notes?: string;
   expanded?: boolean;
 }
 

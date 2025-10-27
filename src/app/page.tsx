@@ -2,7 +2,7 @@ import Hero from "@/app/(marketing)/_components/Hero";
 import SectionHeader from "@/app/(marketing)/_components/SectionHeading";
 import BrowseCategories from "@/app/(marketing)/_components/BrowseCategories";
 import StepsCardGrid from "@/app/(marketing)/_components/StepsCardGrid";
-import PricingCard from "@/app/(marketing)/_components/PricingCard";
+import PricingCTA from "@/app/(marketing)/_components/PricingCTA";
 import FaqAccordion from "@/app/(marketing)/_components/FaqAccordion";
 import Subscribe from "@/app/(marketing)/_components/Subscribe";
 
@@ -10,16 +10,29 @@ import {
   categories,
   howItWorksSteps,
   benefitsList,
-  pricingList,
   faqs,
 } from "@/lib/marketing/homeData";
-import { JobService } from "@/services/JobService";
-import JobsGrid from "@/components/JobsGrid";
+import { JobService } from "@/services/server/JobService";
+import JobsGrid from "@/components/common/JobsGrid";
 import Header from "@/app/(marketing)/_components/Header";
 import Footer from "@/app/(marketing)/_components/Footer";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Kind - Find Your Perfect Match",
+  description: "Find your perfect kindTao",
+  keywords: ["Kind", "KindTao", "KindBossing", "KindTao", "KindBossing"],
+  authors: [{ name: "Kind", url: "https://kind.com" }],
+  creator: "Kind",
+  publisher: "Kind",
+  openGraph: {
+    title: "Kind - Find Your Perfect Match",
+    description: "Find your perfect kindTao",
+  },
+};
 
 export default async function Home() {
-  const [{ locations, jobTypes, payTypes }, latestJobs] = await Promise.all([
+  const [{ provinces: locations, jobTypes }, latestJobs] = await Promise.all([
     JobService.fetchJobFilterOptions(),
     JobService.fetchLatestJobs(8),
   ]);
@@ -28,11 +41,11 @@ export default async function Home() {
     <>
       <Header />
       <Hero />
-      <div className="px-4 lg:px-0">
+      <div className="px-4 lg:px-0 max-w-7xl mx-auto">
         <SectionHeader
           title="Browse by Category"
           description={`Find exactly the help you're looking for. Hundreds of<br/> new jobs and kindTao available everyday.`}
-          className="pt-30 bg-white"
+          className="pt-20 sm:pt-38 bg-white"
         />
 
         {/* Pass categories to BrowseCategories */}
@@ -46,7 +59,7 @@ export default async function Home() {
 
         <StepsCardGrid steps={howItWorksSteps} />
 
-        <div className="bg-[#fcf7f7] py-15 my-15">
+        <div className="bg-[#fcf7f7] py-15 my-15 rounded-2xl">
           <SectionHeader
             title="Find Your Perfect Match"
             description="Search and discover the right kindTao for your needs."
@@ -56,7 +69,7 @@ export default async function Home() {
           <JobsGrid
             locations={locations}
             jobTypes={jobTypes}
-            payTypes={payTypes}
+            payTypes={["All", "Hourly", "Daily", "Monthly", "Fixed"]}
             latestJobs={latestJobs}
           />
         </div>
@@ -84,18 +97,12 @@ export default async function Home() {
           ))}
         </div>
 
-        <SectionHeader
-          title="Pricing"
-          description={`Choose the plan that works best for you`}
-          className="pt-30 bg-white"
-        />
-
-        <PricingCard pricing={pricingList} />
+        <PricingCTA />
 
         <SectionHeader
           title="Frequently Asked Questions"
           description={`Get answers to common questions about our platform`}
-          className="pt-30 bg-white"
+          className="bg-white"
         />
 
         <FaqAccordion faq={faqs} />

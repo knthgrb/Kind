@@ -5,11 +5,11 @@ import {
   ChatService,
   type Message,
   type Conversation,
-} from "@/services/chat/chatService";
+} from "@/services/client/ChatService";
 import {
   RealtimeService,
   type ChatMessage,
-} from "@/services/chat/realtimeService";
+} from "@/services/client/realtimeService";
 import { useInfiniteMessages } from "./useInfiniteMessages";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { MessageWithUser } from "@/types/chat";
@@ -147,7 +147,8 @@ export function useChat({
   // Load conversation when conversationId changes
   useEffect(() => {
     loadConversation();
-  }, [loadConversation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   // Combined mark as read effects to prevent duplicate calls
   useEffect(() => {
@@ -158,7 +159,8 @@ export function useChat({
 
       return () => clearTimeout(timer);
     }
-  }, [autoMarkAsRead, conversationId, user?.id, messages.length, markAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMarkAsRead, conversationId, user?.id, messages.length]);
 
   return {
     // Messages

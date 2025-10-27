@@ -1,7 +1,7 @@
 "use client"; //
 
 import { useState, useEffect, useCallback } from "react";
-import { ChatService } from "@/services/chat/chatService";
+import { ChatService } from "@/services/client/ChatService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { ConversationWithDetails, User } from "@/types/chat";
 
@@ -59,13 +59,13 @@ export function useConversationDetails({
 
   // Get other user and current user
   const otherUser = conversation?.matches
-    ? conversation.matches.kindbossing_id === user?.id
+    ? conversation.matches.kindbossing_user_id === user?.id
       ? conversation.matches.kindtao
       : conversation.matches.kindbossing
     : null;
 
   const currentUser = conversation?.matches
-    ? conversation.matches.kindbossing_id === user?.id
+    ? conversation.matches.kindbossing_user_id === user?.id
       ? conversation.matches.kindbossing
       : conversation.matches.kindtao
     : null;

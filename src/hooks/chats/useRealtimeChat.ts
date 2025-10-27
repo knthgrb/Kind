@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   RealtimeService,
   type ChatMessage,
-} from "@/services/chat/realtimeService";
-import { ChatService } from "@/services/chat/chatService";
+} from "@/services/client/realtimeService";
+import { ChatService } from "@/services/client/ChatService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -61,10 +61,15 @@ export function useRealtimeChat({
             message.sender_id
           );
           if (userDetails) {
-            const chatMessage = RealtimeService.convertToChatMessage(
-              message,
-              userDetails
-            );
+            const chatMessage = RealtimeService.convertToChatMessage(message, {
+              id: userDetails.id,
+              first_name: userDetails.user_metadata?.first_name || "Unknown",
+              last_name: userDetails.user_metadata?.last_name || "User",
+              profile_image_url:
+                userDetails.user_metadata?.avatar_url ||
+                userDetails.user_metadata?.picture ||
+                null,
+            });
             chatMessages.push(chatMessage);
           }
         } catch (userError) {

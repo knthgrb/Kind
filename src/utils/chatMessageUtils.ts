@@ -2,7 +2,7 @@
  * Shared utilities for chat message conversion and formatting
  */
 
-import type { ChatMessage } from "@/services/chat/realtimeService";
+import type { ChatMessage } from "@/services/client/realtimeService";
 import type { MessageWithUser, User } from "@/types/chat";
 
 /**
@@ -81,15 +81,15 @@ export function convertToMessageWithUser(
 export function getOtherUser(
   conversation: {
     matches: {
-      kindbossing_id: string;
-      kindtao_id: string;
+      kindbossing_user_id: string;
+      kindtao_user_id: string;
       kindbossing: User;
       kindtao: User;
     };
   },
   currentUserId: string
 ): User {
-  return conversation.matches.kindbossing_id === currentUserId
+  return conversation.matches.kindbossing_user_id === currentUserId
     ? conversation.matches.kindtao
     : conversation.matches.kindbossing;
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChatService } from "@/services/chat/chatService";
+import { ChatService } from "@/services/client/ChatService";
 import {
   RealtimeService,
   type ChatMessage,
-} from "@/services/chat/realtimeService";
+} from "@/services/client/realtimeService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { ConversationWithDetails } from "@/types/chat";
 

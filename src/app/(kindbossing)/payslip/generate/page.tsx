@@ -1,6 +1,6 @@
 "use client";
 
-import ContinueModal from "@/components/ContinueModal";
+import ContinueModal from "@/components/modals/ContinueModal";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Dropdown from "@/components/dropdown/Dropdown";

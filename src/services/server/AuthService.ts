@@ -92,15 +92,6 @@ export const AuthService = {
           return { data: null, error: insertError };
         }
 
-        if (data.role === "kindbossing") {
-          const { error: familyProfileError } = await supabase
-            .from("family_profiles")
-            .insert({ user_id: authData.user.id });
-          if (familyProfileError) {
-            logger.error("Error inserting family profile:", familyProfileError);
-          }
-        }
-
         logger.debug("User data inserted successfully into users table");
       }
 

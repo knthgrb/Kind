@@ -4,8 +4,8 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import PerformanceTemplate from "./PerformanceTemplate";
 import Reports from "./Reports";
-import Card from "@/components/Card";
-import Chip from "@/components/Chip";
+import Card from "@/components/common/Card";
+import Chip from "@/components/common/Chip";
 
 export default function EmployeeProfileClient() {
   const { employee } = useParams<{ employee: string }>();

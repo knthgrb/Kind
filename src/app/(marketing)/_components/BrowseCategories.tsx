@@ -26,7 +26,7 @@ export default function BrowseCategories({
         {categories.map((category, index) => (
           <div
             key={index}
-            className="flex items-center p-4 rounded-2xl bg-white border border-[#E6E7E9] hover:border-gray-400 w-[330px] h-[130px] transition-all"
+            className="flex items-center p-4 rounded-2xl bg-white border border-[#E6E7E9] h-[130px] transition-all"
           >
             <div className="mr-4">
               <Image

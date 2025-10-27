@@ -30,6 +30,18 @@ export const DOCUMENT_TYPES = [
   "TIN",
 ] as const;
 
+export const EDUCATIONAL_ATTAINMENT_OPTIONS = [
+  "Elementary",
+  "High School",
+  "Senior High School",
+  "Associate Degree",
+  "Bachelor's Degree",
+  "Master's Degree",
+  "Doctorate",
+  "Vocational/Trade School",
+  "No Formal Education",
+] as const;
+
 export const MONTHS = [
   "January",
   "February",

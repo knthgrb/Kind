@@ -2,30 +2,15 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import PostedJobGrid from "./PostedJobsGrid";
-import { FiLogOut } from "react-icons/fi";
 import { LuPencil } from "react-icons/lu";
-import Card from "@/components/Card";
-import { JobPost } from "@/types/jobPosts";
+import Card from "@/components/common/Card";
 import { KindBossingProfile } from "@/types/kindBossingProfile";
 
 type MyProfileClientProps = {
   user: KindBossingProfile;
-  familyId: string;
-  postedJobs: JobPost[];
-  page: number;
-  totalPages: number;
 };
 
-export default function MyProfileClient({
-  user,
-  familyId,
-  postedJobs,
-  page,
-  totalPages,
-}: MyProfileClientProps) {
-  const router = useRouter();
+export default function MyProfileClient({ user }: MyProfileClientProps) {
   const [editingProfile, setEditingProfile] = useState(false);
   const [form, setForm] = useState({
     first_name: user.first_name || "",
@@ -55,22 +40,10 @@ export default function MyProfileClient({
     .filter(Boolean)
     .join(", ");
 
-  const handleEditPlans = () => {
-    console.log("Edit plans clicked");
-  };
-
-  const handleLogout = () => {
-    console.log("Logout clicked");
-  };
-
-  const handleEditProfile = () => {
-    console.log("Edit profile clicked");
-  };
-
   return (
     <main className="min-h-screen px-4 md:px-6 py-6 flex items-start justify-center">
-      <div className="w-full max-w-6xl border border-[#ABABAB] rounded-[30px] p-6 md:p-5 bg-white grid grid-cols-1 lg:grid-cols-12 gap-6 lg:items-start">
-        <div className="lg:col-span-7 flex flex-col h-full">
+      <div className="w-full max-w-4xl border border-[#ABABAB] rounded-[30px] p-6 md:p-5 bg-white">
+        <div className="flex flex-col h-full">
           {/* Personal Information */}
           <Card className="flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-3">
@@ -204,73 +177,6 @@ export default function MyProfileClient({
                 </div>
               </form>
             )}
-          </Card>
-        </div>
-
-        <div className="lg:col-span-5 flex flex-col space-y-4">
-          {/* My Plan */}
-          <Card className="relative">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="profileH1">My Plan</h3>
-              <button
-                onClick={handleEditPlans}
-                className="bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-red-700"
-              >
-                Edit Plans
-              </button>
-            </div>
-            <div>
-              <div className="font-bold text-[1.438rem] text-[#05264E]">
-                Basic
-              </div>
-              <div className="text-[2.877rem] font-extrabold text-[#CC0000]">
-                ₱19
-                <span className="text-[0.924rem] font-normal text-[#A0ABB8]">
-                  /month
-                </span>
-              </div>
-              <p className="text-[0.719rem] text-[#4F5E64] mt-1">
-                Ideal for occasional hiring needs.
-              </p>
-            </div>
-          </Card>
-
-          {/* Logout */}
-          <Card className="relative">
-            <div className="flex items-center justify-between">
-              <h3 className="profileH1">Logout</h3>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="h-10 w-10 rounded-full bg-white flex items-center justify-center text-lg text-[#FF0000] hover:bg-gray-200"
-                aria-label="Logout"
-              >
-                <FiLogOut />
-              </button>
-            </div>
-          </Card>
-        </div>
-
-        {/* Posted Jobs */}
-        <div className="lg:col-span-12">
-          <Card
-            title="Posted Jobs"
-            right={
-              <button
-                onClick={() => router.push("/post-job")}
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-200"
-                aria-label="Add new job"
-              >
-                <Image src="/icons/plus.png" alt="Add" width={20} height={20} />
-              </button>
-            }
-          >
-            <PostedJobGrid
-              jobs={postedJobs}
-              familyId={familyId}
-              page={page}
-              totalPages={totalPages}
-            />
           </Card>
         </div>
       </div>

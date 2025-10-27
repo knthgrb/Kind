@@ -8,6 +8,7 @@ function InstallPrompt() {
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     // Check for iOS devices OR Safari on macOS
@@ -48,6 +49,9 @@ function InstallPrompt() {
       setDeferredPrompt(e);
     });
 
+    // Mark as loaded after initial checks
+    setIsLoaded(true);
+
     // Cleanup
     return () => {
       window.removeEventListener("resize", checkDeviceType);
@@ -77,14 +81,24 @@ function InstallPrompt() {
     setShowIOSModal(false);
   };
 
+  // Don't render anything until loaded to prevent layout shift
+  if (!isLoaded) {
+    return null;
+  }
+
   // Don't show if already installed, not on mobile/tablet, or user closed it
   if (isStandalone || !isMobileOrTablet || !isVisible) {
     return null;
   }
 
+  // Additional check: don't show if no install prompt available and not iOS
+  if (!isIOS && !deferredPrompt) {
+    return null;
+  }
+
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg z-[9999] p-4">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900 text-sm">Install App</h3>

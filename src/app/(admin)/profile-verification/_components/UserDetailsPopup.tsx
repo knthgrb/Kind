@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { formatMMDDYYYY } from "@/utils/dateFormatter";
-import SupabaseImage from "@/components/SupabaseImage";
-import { UserWithDocuments } from "@/services/ProfileVerificationService";
+import SupabaseImage from "@/components/common/SupabaseImage";
+import { UserWithDocuments } from "@/services/server/ProfileVerificationService";
 import { useToast } from "@/contexts/ToastContext";
 
 interface UserDetailsPopupProps {

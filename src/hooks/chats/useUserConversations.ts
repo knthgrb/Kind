@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChatService } from "@/services/chat/chatService";
-import { BlockingService } from "@/services/chat/blockingService";
+import { ChatService } from "@/services/client/ChatService";
+import { BlockingService } from "@/services/client/BlockingService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { ConversationWithDetails } from "@/types/chat";
 export interface UseUserConversationsOptions {
@@ -52,9 +52,9 @@ export function useUserConversations({}: UseUserConversationsOptions = {}): UseU
       // Filter out conversations with blocked users
       const filteredConversations = conversationsData.filter((conversation) => {
         const otherUserId =
-          conversation.matches.kindbossing_id === user.id
-            ? conversation.matches.kindtao_id
-            : conversation.matches.kindbossing_id;
+          conversation.matches.kindbossing_user_id === user.id
+            ? conversation.matches.kindtao_user_id
+            : conversation.matches.kindbossing_user_id;
 
         return !blockedUserIds.includes(otherUserId);
       });

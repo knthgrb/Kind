@@ -110,4 +110,35 @@ export const UserService = {
     }
     return data.phone;
   },
+
+  async getUserLocation(userId: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("users")
+      .select("location_coordinates, province")
+      .eq("id", userId)
+      .single();
+    if (error) {
+      logger.error("Error getting user location:", error);
+      return null;
+    }
+
+    // Parse POINT coordinates if available
+    let lat = 0;
+    let lng = 0;
+    if (data.location_coordinates) {
+      // Parse POINT format: (longitude, latitude)
+      const match = data.location_coordinates.match(/\(([^,]+),([^)]+)\)/);
+      if (match) {
+        lng = parseFloat(match[1]);
+        lat = parseFloat(match[2]);
+      }
+    }
+
+    return {
+      lat,
+      lng,
+      province: data.province || "",
+    };
+  },
 };

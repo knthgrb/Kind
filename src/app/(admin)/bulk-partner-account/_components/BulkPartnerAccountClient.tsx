@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import Pagination from "@/components/Pagination";
+import Pagination from "@/components/pagination/Pagination";
 import ViewProfileModal from "./viewProfileModal";
 import RecreateModal from "./recreateModal";
 import { bulkPartnerAccountData } from "@/lib/admin/tableData";

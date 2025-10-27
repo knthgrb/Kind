@@ -2,7 +2,7 @@
 
 import React from "react";
 import { formatMMDDYYYY } from "@/utils/dateFormatter";
-import Pagination from "@/components/Pagination";
+import Pagination from "@/components/pagination/Pagination";
 import { LuFilter, LuSearch } from "react-icons/lu";
 import SupportTicketModal from "../_components/supportTicketModal";
 

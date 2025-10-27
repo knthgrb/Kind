@@ -27,12 +27,12 @@ export interface Conversation {
 
 export interface Match {
   id: string;
-  kindbossing_id: string;
-  kindtao_id: string;
+  kindbossing_user_id: string;
+  kindtao_user_id: string;
   job_post_id: string;
   matched_at: string;
   is_active: boolean;
-  last_message_at: string | null;
+  created_at: string;
 }
 
 export interface JobPost {

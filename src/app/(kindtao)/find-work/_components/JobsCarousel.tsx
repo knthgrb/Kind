@@ -27,23 +27,27 @@ type Props = {
     dailyLimit: number;
     canSwipe: boolean;
   };
+  onOpenFilters?: () => void;
+  onOpenJobPreferences?: () => void;
 };
 
 export default function JobsCarousel({
   jobs,
   matchingScores = [],
   initialSwipeLimit,
+  onOpenFilters,
+  onOpenJobPreferences,
 }: Props) {
   const PAGE_SIZE = 24;
 
   return (
-    <section className="px-4">
-      <DesktopJobSwipe
-        initialJobs={jobs}
-        initialMatchingScores={matchingScores}
-        pageSize={PAGE_SIZE}
-        initialSwipeLimit={initialSwipeLimit}
-      />
-    </section>
+    <DesktopJobSwipe
+      initialJobs={jobs}
+      initialMatchingScores={matchingScores}
+      pageSize={PAGE_SIZE}
+      initialSwipeLimit={initialSwipeLimit}
+      onOpenFilters={onOpenFilters}
+      onOpenJobPreferences={onOpenJobPreferences}
+    />
   );
 }

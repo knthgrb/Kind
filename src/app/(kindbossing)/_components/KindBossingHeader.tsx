@@ -1,25 +1,32 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { LuBell } from "react-icons/lu";
 import { FaRegEnvelope } from "react-icons/fa";
 import { FaChevronDown } from "react-icons/fa6";
-import { FiMenu, FiX, FiUser, FiLogOut } from "react-icons/fi";
+import {
+  FiX,
+  FiUser,
+  FiLogOut,
+  FiBarChart2,
+  FiSettings,
+  FiMinus,
+  FiMaximize,
+} from "react-icons/fi";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function KindBossingHeader() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, loading, signOut, isAuthenticated } = useAuthStore();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     await signOut();
     setUserMenuOpen(false);
-    setMenuOpen(false);
     router.push("/login");
   };
 
@@ -34,6 +41,19 @@ export default function KindBossingHeader() {
       return user.email.split("@")[0];
     }
     return "User";
+  };
+
+  const getUserInitials = () => {
+    if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
+      return `${user.user_metadata.first_name[0]}${user.user_metadata.last_name[0]}`.toUpperCase();
+    }
+    if (user?.user_metadata?.first_name) {
+      return user.user_metadata.first_name[0].toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
   };
 
   useEffect(() => {
@@ -56,172 +76,115 @@ export default function KindBossingHeader() {
   }, [userMenuOpen]);
 
   return (
-    <header className="bg-white sticky top-0 z-50">
-      <div className="w-full max-w-7xl mx-auto flex justify-between items-center p-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/kindLogo.png"
-            alt="Kind Logo"
-            width={150}
-            height={50}
-            className="h-8 w-auto sm:h-10 lg:h-12"
-          />
-        </Link>
+    <header className="bg-white sticky top-0 z-50 border-b border-gray-200 h-[8vh] flex items-center">
+      <div className="w-full flex justify-between items-center p-2">
+        {/* Logo - Mobile only */}
+        <div className="visible lg:invisible">
+          <Link href="/kindbossing-dashboard">
+            <Image
+              src="/kindLogo.png"
+              alt="Kind Logo"
+              width={120}
+              height={40}
+              className="h-8 w-auto"
+            />
+          </Link>
+        </div>
 
-        {/* Desktop Navigation */}
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex space-x-10 font-medium items-center text-[clamp(0.9rem,1vw,1.125rem)]">
-          {[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Employees", href: "/my-employees" },
-            { label: "Payslip", href: "/payslip" },
-            { label: "Gov't Benefits", href: "/government-benefits" },
-            { label: "Documents", href: "/documents" },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="hover:text-red-600"
+        {/* Profile */}
+        {loading ? (
+          <div className="relative mr-2 z-40" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex items-center gap-2 cursor-pointer"
             >
-              {item.label}
-            </Link>
-          ))}
+              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="hidden sm:block h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+              <div className="hidden sm:block h-3 w-3 bg-gray-200 rounded animate-pulse"></div>
+            </button>
 
-          {/* Messages & Notifications */}
-          <Link href="/messages">
-            <FaRegEnvelope className="text-[#636363] hover:text-red-600 cursor-pointer text-[clamp(1rem,1.2vw,1.25rem)]" />
-          </Link>
-          <Link href="/notifications">
-            <LuBell className="text-[#636363] hover:text-red-600 cursor-pointer text-[clamp(1rem,1.2vw,1.25rem)]" />
-          </Link>
-
-          {/* Profile */}
-          {loading ? (
-            <div className="px-6 py-2 text-gray-500">Loading...</div>
-          ) : isAuthenticated ? (
-            <div className="relative" ref={userMenuRef}>
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-3 px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
-              >
-                <FiUser className="w-5 h-5 text-gray-600" />
-                <div className="text-left">
-                  <div className="text-lg font-semibold text-gray-900 leading-tight">
-                    {getUserDisplayName()}
+            {/* User Dropdown Menu for loading state */}
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  {/* <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
+                    <FiUser className="w-4 h-4" />
+                    Profile
+                  </div> */}
+                  <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
+                    <FiSettings className="w-4 h-4" />
+                    Settings
                   </div>
-                  {user?.user_metadata?.role && (
-                    <div className="text-xs text-gray-500 capitalize">
-                      {user.user_metadata.role}
-                    </div>
-                  )}
-                </div>
-              </button>
-
-              {/* User Dropdown Menu */}
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                  <div className="py-1">
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center space-x-2"
-                    >
-                      <FiLogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
-                    </button>
+                  <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
+                    <FiLogOut className="w-4 h-4" />
+                    Sign Out
                   </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <Link href="/login">
-              <button className="px-6 py-2 bg-red-600 text-white rounded-md text-lg hover:bg-red-700 cursor-pointer">
-                Sign In
-              </button>
-            </Link>
-          )}
-        </nav>
-
-        {/* Mobile Menu Button */}
-        <div className="lg:hidden flex items-center space-x-5">
-          <Link href="/messages" onClick={() => setMenuOpen(false)}>
-            <FaRegEnvelope className="text-[#636363] hover:text-red-600 text-xl" />
-          </Link>
-          <Link href="/notifications" onClick={() => setMenuOpen(false)}>
-            <LuBell className="text-[#636363] hover:text-red-600 text-xl" />
-          </Link>
-          <button className="text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <FiX /> : <FiMenu />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Dropdown Menu */}
-      {/* Mobile Dropdown Menu */}
-      {menuOpen && (
-        <div className="lg:hidden bg-white border-t border-gray-200 py-6 text-[clamp(0.9rem,2.5vw,1rem)]">
-          {/* Profile on Top */}
-          {isAuthenticated ? (
-            <div className="flex items-center justify-center space-x-4 pb-6">
-              <div className="w-12 aspect-square relative block">
-                <FiUser className="w-8 h-8 text-gray-600" />
               </div>
-              <div className="text-center">
-                <div className="text-[#1a1a3b] font-medium text-[clamp(1rem,3vw,1.125rem)]">
-                  {getUserDisplayName()}
-                </div>
-                {user?.user_metadata?.role && (
-                  <div className="text-xs text-gray-500 capitalize">
-                    {user.user_metadata.role}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center pb-6">
-              <Link href="/login">
-                <button className="px-6 py-2 bg-red-600 text-white rounded-md text-lg hover:bg-red-700 cursor-pointer">
-                  Sign In
-                </button>
-              </Link>
-            </div>
-          )}
-
-          {/* Menu Links */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 justify-items-center text-center">
-            {[
-              "Dashboard",
-              "Employees",
-              "Payslip",
-              "Gov't Benefits",
-              "Documents",
-            ].map((item) => (
-              <Link
-                key={item}
-                href={`/${item.toLowerCase().replace(/ /g, "-")}`}
-                className="hover:text-red-600"
-                onClick={() => setMenuOpen(false)}
-              >
-                {item}
-              </Link>
-            ))}
+            )}
           </div>
-        </div>
-      )}
+        ) : isAuthenticated ? (
+          <div className="relative mr-2 z-40" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              {/* Avatar circle with initials */}
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {getUserInitials()}
+              </div>
+              {/* Name */}
+              <span className="hidden sm:inline text-[#1F2A56] font-medium text-sm">
+                {getUserDisplayName()}
+              </span>
+              {/* Dropdown icon */}
+              <FaChevronDown
+                size={14}
+                className={`text-[#1F2A56] transition-transform duration-200 ${
+                  userMenuOpen ? "rotate-180" : "rotate-0"
+                }`}
+              />
+            </button>
+
+            {/* User Dropdown Menu */}
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  {/* <Link
+                    href="/my-profile"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <FiUser className="w-4 h-4" />
+                    Profile
+                  </Link> */}
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <FiSettings className="w-4 h-4" />
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer flex items-center space-x-2"
+                  >
+                    <FiLogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link href="/login">
+            <button className="px-6 py-2 bg-red-600 text-white rounded-md text-lg hover:bg-red-700 cursor-pointer">
+              Sign In
+            </button>
+          </Link>
+        )}
+      </div>
     </header>
   );
 }

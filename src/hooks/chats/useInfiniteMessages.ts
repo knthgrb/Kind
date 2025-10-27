@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChatService } from "@/services/chat/chatService";
-import { BlockingService } from "@/services/chat/blockingService";
+import { ChatService } from "@/services/client/ChatService";
+import { BlockingService } from "@/services/client/BlockingService";
 import {
   RealtimeService,
   type ChatMessage,
-} from "@/services/chat/realtimeService";
+} from "@/services/client/realtimeService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { MessageWithUser } from "@/types/chat";
 import { convertToChatMessage } from "@/utils/chatMessageUtils";
@@ -443,7 +443,7 @@ export function useInfiniteMessages({
         }
       }
     },
-    [hasMore, loadMoreMessages]
+    [hasMore, debouncedLoadMore] // Fixed: use debouncedLoadMore instead of loadMoreMessages
   );
 
   // Function to set up observer (stabilized dependencies to prevent loops)
@@ -457,7 +457,8 @@ export function useInfiniteMessages({
   // Set up observer when the ref is available (removed retry loop)
   useEffect(() => {
     setupObserver();
-  }, [setupObserver, hasMore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore]);
 
   // Load initial messages when conversation changes
   useEffect(() => {
@@ -468,7 +469,8 @@ export function useInfiniteMessages({
       setHasMore(true);
       currentOffset.current = 0;
     }
-  }, [conversationId, loadInitialMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   // Re-observe when hasMore changes (removed loadMoreRefCallback dependency to prevent loop)
   useEffect(() => {
@@ -512,7 +514,8 @@ export function useInfiniteMessages({
         clearTimeout(scrollDebounceRef.current);
       }
     };
-  }, [hasMore, debouncedLoadMore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore]);
 
   // Simplified realtime subscription to prevent loops
   useEffect(() => {

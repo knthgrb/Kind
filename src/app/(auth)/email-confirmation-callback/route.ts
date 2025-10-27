@@ -27,12 +27,10 @@ export async function GET(request: NextRequest) {
         // Redirect based on user role
         if (userRole === "kindbossing") {
           return NextResponse.redirect(
-            `${origin}/kindbossing-onboarding/household-info`
+            `${origin}/kindbossing-onboarding/business-info`
           );
         } else if (userRole === "kindtao") {
-          return NextResponse.redirect(
-            `${origin}/kindtao-onboarding/personal-info`
-          );
+          return NextResponse.redirect(`${origin}/kindtao-onboarding`);
         } else {
           // If no role found, redirect to signup
           return NextResponse.redirect(`${origin}/signup`);

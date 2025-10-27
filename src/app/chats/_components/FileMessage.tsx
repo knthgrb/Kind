@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { IoIosCloseCircle } from "react-icons/io";
-import { FileUploadService } from "@/services/chat/fileUploadService";
+import { FileUploadService } from "@/services/client/FileUploadService";
 
 interface FileMessageProps {
   fileUrl: string;

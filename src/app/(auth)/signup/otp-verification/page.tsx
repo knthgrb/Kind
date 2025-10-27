@@ -3,7 +3,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import ContinueModal from "@/components/ContinueModal"; // adjust path
+import ContinueModal from "@/components/modals/ContinueModal"; // adjust path
 
 export default function OtpVerificationPage() {
   const [modalOpen, setModalOpen] = useState(false);

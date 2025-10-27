@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChatService } from "@/services/chat/chatService";
+import { ChatService } from "@/services/client/ChatService";
 import {
   RealtimeService,
   type ChatMessage,
-} from "@/services/chat/realtimeService";
+} from "@/services/client/realtimeService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { ConversationWithDetails } from "@/types/chat";
 import { formatMessageForSidebar } from "@/utils/chatMessageUtils";
@@ -348,7 +348,8 @@ export function useSidebarMonitoring({
       lastConversationsRef.current = conversationsKey;
       loadInitialData();
     }
-  }, [conversations, loadInitialData]); // Removed user?.id and selectedConversationId from dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations]); // Removed user?.id and selectedConversationId from dependencies
 
   // Subscribe to all conversations when they change
   const lastSubscriptionKeyRef = useRef<string>("");
@@ -371,7 +372,8 @@ export function useSidebarMonitoring({
     if (selectedConversationId) {
       clearUnreadCount(selectedConversationId);
     }
-  }, [selectedConversationId, clearUnreadCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversationId]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -2,8 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { OnboardingService } from "@/services/client/OnboardingService";
-import { FamilyOnboardingService } from "@/services/client/FamilyOnboardingService";
 import { AuthService } from "@/services/server/AuthService";
 import { UserService } from "@/services/server/UserService";
 import { logger } from "@/utils/logger";
@@ -14,7 +12,7 @@ export async function login(formData: FormData) {
     password: formData.get("password") as string,
   };
 
-  const { data: authData, error } = await AuthService.login(
+  const { data: authData, error } = await AuthService.signIn(
     data.email,
     data.password
   );
@@ -58,7 +56,7 @@ export async function login(formData: FormData) {
           success: true,
           data: authData,
           user: user,
-          redirectTo: "/oauth/google/select-role",
+          redirectTo: "/select-role",
         };
       }
 
@@ -83,9 +81,9 @@ export async function login(formData: FormData) {
     if (role === "kindtao") {
       redirectTo = "/find-work";
     } else if (role === "kindbossing") {
-      redirectTo = "/dashboard";
+      redirectTo = "/kindbossing-dashboard";
     } else if (role === "admin") {
-      redirectTo = "/dashboard";
+      redirectTo = "/admin-dashboard";
     }
 
     return {

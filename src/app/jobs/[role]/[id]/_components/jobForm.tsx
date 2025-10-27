@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import StepperFooter from "@/components/StepperFooter";
+import StepperFooter from "@/components/common/StepperFooter";
 import { JobPost, SalaryRate } from "@/types/jobPosts";
 import { amounts, units } from "@/lib/jobs";
 import Dropdown from "@/components/dropdown/Dropdown";

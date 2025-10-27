@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { formatMMDDYYYY } from "@/utils/dateFormatter";
-import SupabaseImage from "@/components/SupabaseImage";
-import { UserWithDocuments } from "@/services/ProfileVerificationService";
+import SupabaseImage from "@/components/common/SupabaseImage";
+import { UserWithDocuments } from "@/services/server/ProfileVerificationService";
 import { useState } from "react";
 
 type ApprovalCardProps = {
@@ -20,7 +20,10 @@ export default function EmployeeCard({
   onViewDetails,
 }: ApprovalCardProps) {
   const fullName = `${user.first_name} ${user.last_name}`;
-  const pendingDocuments = user.user_documents?.filter(doc => doc.verification_status === 'pending') || [];
+  const pendingDocuments =
+    user.user_documents?.filter(
+      (doc) => doc.verification_status === "pending"
+    ) || [];
   const allDocuments = user.user_documents || [];
   const profileImageUrl = user.profile_image_url || "/profile.jpg";
 
@@ -41,10 +44,13 @@ export default function EmployeeCard({
             fallbackSrc="/profile/profile_placeholder.png"
             clickable={true}
             onError={(e) => {
-              console.error('Profile image failed to load:', e.currentTarget.src);
+              console.error(
+                "Profile image failed to load:",
+                e.currentTarget.src
+              );
             }}
             onLoad={() => {
-              console.log('Profile image loaded successfully');
+              console.log("Profile image loaded successfully");
             }}
           />
         </div>
@@ -53,7 +59,9 @@ export default function EmployeeCard({
             {fullName}
           </h3>
           <p className="text-[0.66rem] text-[#A0ABB8]">{user.email}</p>
-          <p className="text-[0.66rem] text-[#A0ABB8]">{user.phone || 'No phone'}</p>
+          <p className="text-[0.66rem] text-[#A0ABB8]">
+            {user.phone || "No phone"}
+          </p>
         </div>
       </div>
 

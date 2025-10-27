@@ -51,8 +51,8 @@ export async function sendMessage(
       id,
       matches (
         id,
-        kindbossing_id,
-        kindtao_id
+        kindbossing_user_id,
+        kindtao_user_id
       )
     `
     )
@@ -65,7 +65,9 @@ export async function sendMessage(
   // Determine recipient (the user who didn't send the message)
   const match = conversationData.matches as any; // Type assertion for Supabase join result
   const recipientId =
-    senderId === match.kindbossing_id ? match.kindtao_id : match.kindbossing_id;
+    senderId === match.kindbossing_user_id
+      ? match.kindtao_user_id
+      : match.kindbossing_user_id;
 
   // Get sender's name using the same approach as chat system
 

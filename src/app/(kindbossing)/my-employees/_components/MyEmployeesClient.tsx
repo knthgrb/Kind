@@ -2,10 +2,10 @@
 
 import React from "react";
 import { formatMMDDYYYY } from "@/utils/dateFormatter";
-import Pagination from "@/components/Pagination";
-import { LuFilter, LuSearch } from "react-icons/lu";
+import Pagination from "@/components/pagination/Pagination";
 import Link from "next/link";
 import { Employee } from "@/lib/kindBossing/employees";
+import { FaUser, FaEye } from "react-icons/fa";
 
 interface MyEmployeesClientProps {
   employees: Employee[];
@@ -14,23 +14,33 @@ interface MyEmployeesClientProps {
 export default function MyEmployeesClient({
   employees,
 }: MyEmployeesClientProps) {
-  const pageSize = 8;
+  const pageSize = 10;
   const [page, setPage] = React.useState(1);
   const totalPages = Math.ceil(employees.length / pageSize);
   const from = (page - 1) * pageSize;
   const rows = employees.slice(from, from + pageSize);
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-green-100 text-green-800";
+      case "Inactive":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   return (
     <div>
       {/* Desktop Table */}
-      <div className="mt-6 overflow-x-auto hidden lg:block">
-        <div className="rounded-2xl border border-[#E8F1FD] overflow-x-auto">
-          <table className="min-w-[900px] w-full">
-            <thead className="bg-gray-50 text-gray-500 text-sm">
+      <div className="overflow-x-auto">
+        <div className="rounded-2xl border border-gray-200 overflow-hidden">
+          <table className="min-w-full bg-white">
+            <thead className="bg-white border-b border-gray-200 text-gray-500 text-sm">
               <tr>
                 {[
-                  "Number",
-                  "Name",
+                  "Employee",
                   "Job",
                   "Joining Date",
                   "Total Hours Work",
@@ -39,46 +49,56 @@ export default function MyEmployeesClient({
                 ].map((h) => (
                   <th
                     key={h}
-                    className="text-gray-500 text-[0.806rem] font-medium px-6 py-3 text-left whitespace-nowrap"
+                    className="text-gray-500 text-sm font-medium px-6 py-4 text-left whitespace-nowrap"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E8F1FD] text-[15px]">
-              {rows.map((r, i) => (
-                <tr key={`${r.name}-${from + i}`}>
-                  <td className="px-6 py-4 font-bold text-gray-900 whitespace-nowrap">
-                    {String(from + i + 1).padStart(2, "0")}
+            <tbody className="divide-y divide-gray-200 text-sm">
+              {rows.map((employee, i) => (
+                <tr
+                  key={`${employee.name}-${from + i}`}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <FaUser className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">
+                          {employee.name}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                    {r.name}
+                  <td className="px-6 py-4 text-gray-600">{employee.job}</td>
+                  <td className="px-6 py-4 text-gray-600">
+                    {formatMMDDYYYY(employee.joiningDate)}
                   </td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                    {r.job}
+                  <td className="px-6 py-4 text-gray-600">
+                    {employee.totalHoursWork}
                   </td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                    {formatMMDDYYYY(r.joiningDate)}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                    {r.totalHoursWork}
-                  </td>
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap ${
-                      r.status === "Active"
-                        ? "text-[#22C03C]"
-                        : "text-[#FF0004]"
-                    }`}
-                  >
-                    {r.status}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/my-employees/${encodeURIComponent(r.name)}`}
-                      className="mt-2 w-full bg-red-700 text-white text-xs px-4 py-2 rounded-lg hover:bg-red-800 text-center block"
+                  <td className="px-6 py-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        employee.status
+                      )}`}
                     >
-                      View Profile
+                      {employee.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Link
+                      href={`/my-employees/${encodeURIComponent(
+                        employee.name
+                      )}`}
+                      className="inline-flex items-center space-x-2 bg-[#CC0000] text-white text-xs px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <FaEye className="w-3 h-3" />
+                      <span>View Profile</span>
                     </Link>
                   </td>
                 </tr>
@@ -90,34 +110,49 @@ export default function MyEmployeesClient({
 
       {/* Mobile Card View */}
       <div className="mt-6 space-y-4 lg:hidden">
-        {rows.map((r, i) => (
+        {rows.map((employee, i) => (
           <div
-            key={`${r.name}-${from + i}`}
-            className="border border-gray-200 rounded-xl p-4"
+            key={`${employee.name}-${from + i}`}
+            className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
           >
-            <p className="text-sm font-bold text-gray-900">
-              #{from + i + 1} - {r.name}
-            </p>
-            <p className="text-sm text-gray-600">Job: {r.job}</p>
-            <p className="text-sm text-gray-600">
-              Joining: {formatMMDDYYYY(r.joiningDate)}
-            </p>
-            <p className="text-sm text-gray-600">
-              Total Hours Work: {r.totalHoursWork}
-            </p>
-            <p
-              className={`text-sm font-medium ${
-                r.status === "Active" ? "text-[#22C03C]" : "text-[#FF0004]"
-              }`}
-            >
-              <span className="text-gray-600">Status:</span>
-              {r.status}
-            </p>
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                <FaUser className="w-5 h-5 text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-gray-900">
+                  {employee.name}
+                </div>
+                <div className="text-sm text-gray-600">{employee.job}</div>
+              </div>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                  employee.status
+                )}`}
+              >
+                {employee.status}
+              </span>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Joining Date:</span>
+                <span className="font-medium">
+                  {formatMMDDYYYY(employee.joiningDate)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Total Hours:</span>
+                <span className="font-medium">{employee.totalHoursWork}</span>
+              </div>
+            </div>
+
             <Link
-              href={`/my-employees/${encodeURIComponent(r.name)}`}
-              className="mt-2 w-full bg-red-700 text-white text-xs px-4 py-2 rounded-lg hover:bg-red-800 text-center block"
+              href={`/my-employees/${encodeURIComponent(employee.name)}`}
+              className="w-full bg-[#CC0000] text-white text-xs px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-center flex items-center justify-center space-x-2"
             >
-              View Profile
+              <FaEye className="w-3 h-3" />
+              <span>View Profile</span>
             </Link>
           </div>
         ))}

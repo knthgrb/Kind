@@ -1,8 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { logger } from "@/utils/logger";
-import { OnboardingService } from "@/services/server/OnboardingService";
-import { FamilyOnboardingService } from "@/services/server/FamilyOnboardingService";
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -16,11 +13,12 @@ const PUBLIC_ROUTES = [
   "/find-help",
   "/email-confirmation-callback",
   "/oauth/google/callback",
-  "/oauth/google/select-role",
+  "/select-role",
   "/oauth/google/auth-code-error",
   "/email-confirmation",
   "/email-not-confirmed",
   "/forbidden",
+  "/api/webhooks/xendit",
 ] as const;
 
 const AUTH_ROUTES = ["/login", "/signup"] as const;
@@ -51,9 +49,7 @@ const KINDBOSSING_PREFIXES = [
   "/my-profile",
   "/documents",
   "/payslip",
-  "/post-job",
   "/government-benefits",
-  "/kindbossing-profile",
 ] as const;
 
 function matchesAnyPrefix(
@@ -131,6 +127,11 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Redirect to role selection if user has no role (regardless of auth method)
+  if (user && !user.user_metadata?.role) {
+    return NextResponse.redirect(new URL("/select-role", request.url));
+  }
+
   if (user && AUTH_ROUTES.includes(currentPathname as any)) {
     const url = request.nextUrl.clone();
     const role = user.user_metadata?.role;
@@ -139,23 +140,12 @@ export async function updateSession(request: NextRequest) {
       url.pathname = "/find-work";
       return NextResponse.redirect(url);
     } else if (role === "kindbossing") {
-      url.pathname = "/dashboard";
+      url.pathname = "/kindbossing-dashboard";
       return NextResponse.redirect(url);
     }
 
     url.pathname = "/";
     return NextResponse.redirect(url);
-  }
-
-  // Redirect to role selection if google login and has no role
-  if (
-    user &&
-    user?.app_metadata?.provider === "google" &&
-    !user.user_metadata?.role
-  ) {
-    return NextResponse.redirect(
-      new URL("/oauth/google/select-role", request.url)
-    );
   }
 
   // Role-specific route protection (only for authenticated users)
@@ -191,90 +181,25 @@ export async function updateSession(request: NextRequest) {
   if (user && !user.user_metadata?.has_completed_onboarding) {
     const url = request.nextUrl.clone();
 
+    // If user hasn't completed onboarding, only redirect when they're NOT already
+    // within their respective onboarding flow to avoid redirect loops.
     if (user?.user_metadata?.role === "kindtao") {
-      try {
-        const onboardingProgress =
-          await OnboardingService.checkOnboardingProgress(user);
-        const requiredPath =
-          onboardingProgress.nextStage || "/kindtao-onboarding/personal-info";
-
-        // Only redirect if user is not already on the correct path
-        if (currentPathname !== requiredPath) {
-          // If user is on an onboarding route but wrong stage, redirect to correct stage
-          if (isKindTaoOnboardingRoute(currentPathname)) {
-            url.pathname = requiredPath;
-            return NextResponse.redirect(url);
-          }
-
-          // If user is NOT on an onboarding route, redirect them to onboarding
-          if (!isKindTaoOnboardingRoute(currentPathname)) {
-            url.pathname = requiredPath;
-            return NextResponse.redirect(url);
-          }
-        }
-      } catch (error) {
-        logger.error("Error checking onboarding progress:", error);
-        const fallbackPath = "/kindtao-onboarding/personal-info";
-
-        // Only redirect to fallback if user is not already on the fallback path
-        if (currentPathname !== fallbackPath) {
-          // If user is on an onboarding route but wrong stage, redirect to fallback
-          if (isKindTaoOnboardingRoute(currentPathname)) {
-            url.pathname = fallbackPath;
-            return NextResponse.redirect(url);
-          }
-
-          // If user is NOT on an onboarding route, redirect them to fallback
-          if (!isKindTaoOnboardingRoute(currentPathname)) {
-            url.pathname = fallbackPath;
-            return NextResponse.redirect(url);
-          }
-        }
+      const targetPath = "/kindtao-onboarding";
+      const alreadyOnOnboarding = currentPathname.startsWith(
+        "/kindtao-onboarding"
+      );
+      if (!alreadyOnOnboarding) {
+        url.pathname = targetPath;
+        return NextResponse.redirect(url);
       }
     } else if (user?.user_metadata?.role === "kindbossing") {
-      try {
-        const familyOnboardingProgress =
-          await FamilyOnboardingService.checkFamilyOnboardingProgress(user.id);
-        const requiredPath =
-          familyOnboardingProgress.nextStage ||
-          "/kindbossing-onboarding/business-info";
-
-        console.log("familyOnboardingProgress", familyOnboardingProgress);
-        console.log("requiredPath", requiredPath);
-        console.log("currentPathname", currentPathname);
-
-        // Only redirect if user is not already on the correct path
-        if (currentPathname !== requiredPath) {
-          // If user is on a family profile route but wrong stage, redirect to correct stage
-          if (isKindBossingOnboardingRoute(currentPathname)) {
-            url.pathname = requiredPath;
-            return NextResponse.redirect(url);
-          }
-
-          // If user is NOT on a family profile route, redirect them to family profile
-          if (!isKindBossingOnboardingRoute(currentPathname)) {
-            url.pathname = requiredPath;
-            return NextResponse.redirect(url);
-          }
-        }
-      } catch (error) {
-        logger.error("Error checking family onboarding progress:", error);
-        const fallbackPath = "/kindbossing-onboarding/business-info";
-
-        // Only redirect to fallback if user is not already on the fallback path
-        if (currentPathname !== fallbackPath) {
-          // If user is on a family profile route but wrong stage, redirect to fallback
-          if (isKindBossingOnboardingRoute(currentPathname)) {
-            url.pathname = fallbackPath;
-            return NextResponse.redirect(url);
-          }
-
-          // If user is NOT on a family profile route, redirect them to fallback
-          if (!isKindBossingOnboardingRoute(currentPathname)) {
-            url.pathname = fallbackPath;
-            return NextResponse.redirect(url);
-          }
-        }
+      const targetPath = "/kindbossing-onboarding/business-info";
+      const alreadyOnOnboarding = currentPathname.startsWith(
+        "/kindbossing-onboarding"
+      );
+      if (!alreadyOnOnboarding) {
+        url.pathname = targetPath;
+        return NextResponse.redirect(url);
       }
     }
   }
@@ -287,9 +212,6 @@ export async function updateSession(request: NextRequest) {
     isKindTaoOnboardingRoute(currentPathname) &&
     currentPathname !== "/find-work"
   ) {
-    logger.info(
-      "Kindtao user with completed onboarding trying to access onboarding page, redirecting to find-work"
-    );
     const url = request.nextUrl.clone();
     url.pathname = "/find-work";
     return NextResponse.redirect(url);
@@ -301,13 +223,10 @@ export async function updateSession(request: NextRequest) {
     user.user_metadata?.role === "kindbossing" &&
     user.user_metadata?.has_completed_onboarding &&
     isKindBossingOnboardingRoute(currentPathname) &&
-    currentPathname !== "/dashboard"
+    currentPathname !== "/kindbossing-dashboard"
   ) {
-    logger.info(
-      "Kindbossing user with completed onboarding trying to access onboarding page, redirecting to dashboard"
-    );
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/kindbossing-dashboard";
     return NextResponse.redirect(url);
   }
 

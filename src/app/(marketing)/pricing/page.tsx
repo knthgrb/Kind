@@ -13,12 +13,7 @@ export default function Pricing() {
         className="pt-10 bg-white"
       />
 
-      <div className="space-y-30">
-        <PricingCard pricing={pricingList} />
-        <FaqAccordion faq={faqs} />
-      </div>
-
-      <Subscribe />
+      <PricingCard pricing={pricingList} />
     </div>
   );
 }

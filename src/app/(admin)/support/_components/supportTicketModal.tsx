@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { formatMMDDYYYY } from "@/utils/dateFormatter";
 import Dropdown from "@/components/dropdown/Dropdown";
-import Card from "@/components/Card";
+import Card from "@/components/common/Card";
 
 type Ticket = {
   id: number;

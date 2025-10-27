@@ -13,12 +13,12 @@ type PricingProps = {
 
 export default function PricingList({ pricing }: PricingProps) {
   return (
-    <section className="bg-white">
+    <section className="bg-white mb-10">
       <div className="max-w-6xl bg-white mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 px-4">
         {pricing.map((pricing, index) => (
           <div
             key={index}
-            className="flex flex-col p-[45px] rounded-2xl bg-white border border-[#E6E7E9] hover:border-[#CC0000] transition-all w-full h-auto"
+            className="flex flex-col p-[45px] rounded-2xl bg-white border border-[#E6E7E9] hover:border-[#CC0000] hover:scale-105 transition-all duration-300 w-full h-auto"
           >
             <h3 className="pricingh3 font-plusJakarta font-bold text-textPrimary">
               {pricing.tier}
@@ -51,8 +51,8 @@ export default function PricingList({ pricing }: PricingProps) {
               ))}
             </ul>
             <div className="flex items-center mt-auto">
-              <button className="w-full py-2 px-6 bg-white text-[#CC0000] border-2 border-[#CC0000] rounded-lg bold hover:bg-[#CC0000] hover:text-white">
-                <span className="text-sm">Choose Plan</span>
+              <button className="cursor-pointer w-full py-2 px-6 bg-white text-[#CC0000] border-2 border-[#CC0000] rounded-lg bold hover:bg-[#CC0000] hover:text-white transition-colors duration-300">
+                <span className="text-sm">Get Started</span>
               </button>
             </div>
           </div>

@@ -1,38 +1,10 @@
 import { redirect } from "next/navigation";
-import { ProfileService } from "@/services/ProfileService";
-import { JobService } from "@/services/JobService";
+import { ProfileService } from "@/services/server/ProfileService";
 import MyProfileClient from "./_components/MyProfileClient";
-import { FamilyService } from "@/services/server/FamilyService";
 
-export default async function MyProfilePage({
-  searchParams,
-}: {
-  searchParams: { page?: string };
-}) {
+export default async function MyProfilePage() {
   const profileData = await ProfileService.fetchUserProfile();
   if (!profileData) redirect("/login");
 
-  const { data: familyProfile } = await FamilyService.getFamilyProfile(
-    profileData.id
-  );
-  if (!familyProfile) redirect("/login");
-
-  const page = Number(searchParams?.page) || 1;
-  const pageSize = 8;
-
-  const { jobs, total } = await JobService.fetchPaginatedKindBossingPosts(
-    profileData.id,
-    page,
-    pageSize
-  );
-
-  return (
-    <MyProfileClient
-      user={profileData}
-      familyId={familyProfile.id}
-      postedJobs={jobs}
-      page={page}
-      totalPages={Math.ceil(total / pageSize)}
-    />
-  );
+  return <MyProfileClient user={profileData} />;
 }

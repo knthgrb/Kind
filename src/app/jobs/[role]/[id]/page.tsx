@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { JobService } from "@/services/JobService";
+import { JobService } from "@/services/server/JobService";
 import JobDetails from "./_components/jobDetails";
 
 export default async function JobDetailsPage(props: {

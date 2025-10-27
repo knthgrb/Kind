@@ -1,8 +1,8 @@
-import { JobService } from "@/services/JobService";
-import { SwipeService } from "@/services/SwipeService";
-import JobsCarousel from "./_components/JobsCarousel";
-import JobSwipeWrapper from "./_components/JobSwipeWrapper";
-import { createClient } from "@/utils/supabase/server";
+import { JobService } from "@/services/server/JobService";
+import { SwipeService } from "@/services/server/SwipeService";
+import FindWorkClient from "./_components/FindWorkClient";
+import { UserService } from "@/services/server/UserService";
+import { redirect } from "next/navigation";
 
 const PAGE_SIZE = 20;
 
@@ -15,64 +15,25 @@ export default async function FindWorkPage({
   const resolvedSearchParams = await searchParams;
 
   // Get current user
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { data: user, error: authError } = await UserService.getCurrentUser();
 
   if (authError || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Authentication Required
-          </h2>
-          <p className="text-gray-600">Please log in to view job matches.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if user has completed onboarding (has helper profile)
-  const { data: helperProfile, error: profileError } = await supabase
-    .from("helper_profiles")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (profileError || !helperProfile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Complete Your Profile
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Please complete your profile to view job matches.
-          </p>
-          <a
-            href="/kindtao-onboarding/personal-info"
-            className="inline-block px-6 py-3 bg-[#CC0000] text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Complete Profile
-          </a>
-        </div>
-      </div>
-    );
+    redirect("/login");
   }
 
   // Create initialFilters from resolvedSearchParams for the search component
   const initialFilters = {
-    tags: resolvedSearchParams.tags ? resolvedSearchParams.tags.split(",") : [],
-    location: resolvedSearchParams.location || "All",
+    search: resolvedSearchParams.search || "",
+    province: resolvedSearchParams.province || "All",
+    radius: parseInt(resolvedSearchParams.radius) || 50,
     jobType: resolvedSearchParams.jobType || "All",
-    payType: resolvedSearchParams.payType || "All",
-    keyword: resolvedSearchParams.keyword || "",
   };
 
   // Serialize initialFilters to ensure it's a plain object
   const serializedInitialFilters = JSON.parse(JSON.stringify(initialFilters));
+
+  // Get user location for radius filtering
+  const userLocation = await UserService.getUserLocation(user.id);
 
   // Fetch matched jobs using the matching algorithm and swipe limit status
   const [matchedJobs, filterOptions, swipeLimitStatus] = await Promise.all([
@@ -82,36 +43,44 @@ export default async function FindWorkPage({
   ]);
 
   // Convert matched jobs to plain objects for client components
-  const jobs = matchedJobs.map((job) => ({
-    id: String(job.id),
-    family_id: String(job.family_id),
-    title: String(job.title),
-    description: String(job.description),
-    job_type: job.job_type ? String(job.job_type) : null,
-    location: String(job.location),
-    salary_min: Number(job.salary_min),
-    salary_max: Number(job.salary_max),
-    salary_rate: String(job.salary_rate),
-    created_at: String(job.created_at),
-    updated_at: String(job.updated_at),
+  const jobs = matchedJobs.map((match) => ({
+    id: String(match.jobId),
+    kindbossing_user_id: String(match.job?.kindbossing_user_id || ""),
+    job_title: String(match.job?.job_title || ""),
+    job_description: String(match.job?.job_description || ""),
+    job_type: match.job?.job_type ? String(match.job.job_type) : null,
+    location: String(match.job?.location || ""),
+    salary: String(match.job?.salary || ""),
+    required_skills: Array.isArray(match.job?.required_skills)
+      ? match.job.required_skills
+      : [],
+    work_schedule: match.job?.work_schedule || {},
+    required_years_of_experience: Number(
+      match.job?.required_years_of_experience || 0
+    ),
+    preferred_languages: Array.isArray(match.job?.preferred_languages)
+      ? match.job.preferred_languages
+      : [],
+    is_boosted: Boolean(match.job?.is_boosted),
+    boost_expires_at: match.job?.boost_expires_at
+      ? String(match.job.boost_expires_at)
+      : null,
+    status: String(match.job?.status || "active"),
+    created_at: String(match.job?.created_at || ""),
+    updated_at: String(match.job?.updated_at || ""),
   }));
 
   // Convert matching scores to plain objects
-  const matchingScores = matchedJobs.map((job) => ({
-    jobId: String(job.matchingScore.jobId),
-    score: Number(job.matchingScore.score),
-    reasons: Array.isArray(job.matchingScore.reasons)
-      ? job.matchingScore.reasons.map(String)
-      : [],
+  const matchingScores = matchedJobs.map((match) => ({
+    jobId: String(match.jobId),
+    score: Number(match.score),
+    reasons: Array.isArray(match.reasons) ? match.reasons.map(String) : [],
     breakdown: {
-      jobTypeMatch: Number(job.matchingScore.breakdown.jobTypeMatch),
-      locationMatch: Number(job.matchingScore.breakdown.locationMatch),
-      salaryMatch: Number(job.matchingScore.breakdown.salaryMatch),
-      skillsMatch: Number(job.matchingScore.breakdown.skillsMatch),
-      experienceMatch: Number(job.matchingScore.breakdown.experienceMatch),
-      availabilityMatch: Number(job.matchingScore.breakdown.availabilityMatch),
-      ratingBonus: Number(job.matchingScore.breakdown.ratingBonus),
-      recencyBonus: Number(job.matchingScore.breakdown.recencyBonus),
+      jobTitle: Number(match.breakdown.jobTitle),
+      jobType: Number(match.breakdown.jobType),
+      location: Number(match.breakdown.location),
+      salary: Number(match.breakdown.salary),
+      languages: Number(match.breakdown.languages),
     },
   }));
 
@@ -121,14 +90,11 @@ export default async function FindWorkPage({
 
   // Ensure filterOptions are properly serialized
   const serializedFilterOptions = {
-    locations: Array.isArray(filterOptions.locations)
-      ? filterOptions.locations.map(String)
+    provinces: Array.isArray(filterOptions.provinces)
+      ? filterOptions.provinces.map(String)
       : [],
     jobTypes: Array.isArray(filterOptions.jobTypes)
       ? filterOptions.jobTypes.map(String)
-      : [],
-    payTypes: Array.isArray(filterOptions.payTypes)
-      ? filterOptions.payTypes.map(String)
       : [],
   };
 
@@ -155,28 +121,14 @@ export default async function FindWorkPage({
   );
 
   return (
-    <section>
-      {/* Mobile swipe */}
-      <div className="block sm:hidden">
-        <JobSwipeWrapper
-          initialJobs={finalJobs}
-          pageSize={Number(PAGE_SIZE)}
-          locations={finalFilterOptions.locations}
-          jobTypes={finalFilterOptions.jobTypes}
-          payTypes={finalFilterOptions.payTypes}
-          initialFilters={finalInitialFilters}
-          initialSwipeLimit={finalSwipeLimit}
-        />
-      </div>
-
-      {/* Desktop carousel */}
-      <div className="hidden sm:block">
-        <JobsCarousel
-          jobs={finalJobs}
-          matchingScores={finalMatchingScores}
-          initialSwipeLimit={finalSwipeLimit}
-        />
-      </div>
-    </section>
+    <FindWorkClient
+      initialJobs={finalJobs}
+      initialMatchingScores={finalMatchingScores}
+      provinces={finalFilterOptions.provinces}
+      jobTypes={finalFilterOptions.jobTypes}
+      initialFilters={finalInitialFilters}
+      initialSwipeLimit={finalSwipeLimit}
+      currentPlan={"free"}
+    />
   );
 }

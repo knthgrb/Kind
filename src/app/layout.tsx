@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
-import NotificationInitializer from "@/components/NotificationInitializer";
-import NotificationPrompt from "@/components/NotificationPrompt";
+import NotificationInitializer from "@/components/notification/NotificationInitializer";
+import NotificationPrompt from "@/components/notification/NotificationPrompt";
 import { ToastProvider } from "@/contexts/ToastContext";
-import AuthProvider from "@/components/AuthProvider";
-import ToastContainer from "@/components/Toast/ToastContainer";
+import AuthProvider from "@/components/common/AuthProvider";
+import ToastContainer from "@/components/toast/ToastContainer";
+import SubscriptionSuccessHandler from "@/components/common/SubscriptionSuccessHandler";
 
 // Import the required fonts
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -54,6 +55,7 @@ export default function RootLayout({
             <InstallPrompt />
             <NotificationInitializer />
             <NotificationPrompt />
+            <SubscriptionSuccessHandler />
             {children}
             <ToastContainer />
           </AuthProvider>

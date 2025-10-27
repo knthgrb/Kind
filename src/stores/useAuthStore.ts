@@ -86,13 +86,12 @@ export const useAuthStore = create(
               user_metadata: state.user.user_metadata
                 ? {
                     role: state.user.user_metadata.role,
-                    subscription_tier:
-                      state.user.user_metadata.subscription_tier,
-                    verification_status:
-                      state.user.user_metadata.verification_status,
-                    boost_credits: state.user.user_metadata.boost_credits,
-                    swipe_credits: state.user.user_metadata.swipe_credits,
-                    version: state.user.user_metadata.version,
+                    first_name: state.user.user_metadata.first_name,
+                    last_name: state.user.user_metadata.last_name,
+                    email: state.user.user_metadata.email,
+                    phone: state.user.user_metadata.phone,
+                    profile_image_url:
+                      state.user.user_metadata.profile_image_url,
                   }
                 : undefined,
               app_metadata: state.user.app_metadata

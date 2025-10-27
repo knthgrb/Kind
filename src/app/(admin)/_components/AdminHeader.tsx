@@ -72,7 +72,7 @@ export default function AdminHeader() {
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex space-x-10 font-medium items-center text-[clamp(0.9rem,1vw,1.125rem)]">
           {[
-            { label: "Dashboard", href: "/dashboard" },
+            { label: "Dashboard", href: "/admin-dashboard" },
             { label: "Employees", href: "/profile-verification" },
             { label: "Payslip", href: "/error" },
             { label: "Gov't Benefits", href: "/error" },
@@ -129,7 +129,7 @@ export default function AdminHeader() {
                       Profile
                     </Link>
                     <Link
-                      href="/dashboard"
+                      href="/admin-dashboard"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                       onClick={() => setUserMenuOpen(false)}
                     >
@@ -202,7 +202,7 @@ export default function AdminHeader() {
           {/* Menu Links */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 justify-items-center text-center">
             {[
-              { label: "Dashboard", href: "/dashboard" },
+              { label: "Dashboard", href: "/admin-dashboard" },
               { label: "Employees", href: "/profile-verification" },
               { label: "Payslip", href: "/error" },
               { label: "Gov't Benefits", href: "/error" },

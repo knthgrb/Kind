@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { FileUploadService } from "@/services/chat/fileUploadService";
+import { FileUploadService } from "@/services/client/FileUploadService";
 import { IoAttachOutline } from "react-icons/io5";
 
 interface FileAttachmentModalProps {

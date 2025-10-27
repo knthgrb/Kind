@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChatService } from "@/services/chat/chatService";
-import { type ChatMessage } from "@/services/chat/realtimeService";
+import { ChatService } from "@/services/client/ChatService";
+import { type ChatMessage } from "@/services/client/realtimeService";
 import type { Message, User } from "@/types/chat";
 
 export interface MessageWithUser extends Message {
@@ -37,30 +37,6 @@ export function useMessagesWithUsers({
   const [userCache, setUserCache] = useState<Map<string, User>>(new Map());
   const [messagesWithUsers, setMessagesWithUsers] = useState<MessageWithUser[]>(
     []
-  );
-
-  // Fetch user details for a message sender
-  const fetchUserDetails = useCallback(
-    async (userId: string): Promise<User | null> => {
-      // Check cache first
-      if (userCache.has(userId)) {
-        return userCache.get(userId)!;
-      }
-
-      try {
-        const userData = await ChatService.getUserDetails(userId);
-        if (!userData) {
-          return null;
-        }
-
-        // Cache the user
-        setUserCache((prev) => new Map(prev).set(userId, userData));
-        return userData;
-      } catch (error) {
-        return null;
-      }
-    },
-    [userCache]
   );
 
   // Convert ChatMessages to MessageWithUser format
@@ -115,7 +91,8 @@ export function useMessagesWithUsers({
     } else {
       setMessagesWithUsers([]);
     }
-  }, [chatMessages, convertChatMessageToMessageWithUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatMessages]);
 
   // Wrapper functions that maintain the same interface
   const addMessage = useCallback((message: Message) => {

@@ -8,6 +8,7 @@ export type DropdownProps = {
   onChange: (val: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 };
 
 export default function Dropdown({
@@ -16,6 +17,7 @@ export default function Dropdown({
   onChange,
   placeholder = "Select...",
   className = "",
+  disabled = false,
 }: DropdownProps) {
   const [expanded, setExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -36,8 +38,13 @@ export default function Dropdown({
       {/* Trigger (styled like a select) */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full h-11.5 rounded-md px-3 text-left text-sm text-gray-700 flex items-center justify-between bg-white focus:outline-none"
+        onClick={() => !disabled && setExpanded((v) => !v)}
+        disabled={disabled}
+        className={`w-full h-11.5 rounded-md px-3 text-left text-sm flex items-center justify-between focus:outline-none ${
+          disabled
+            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+            : "text-gray-700 bg-white"
+        }`}
       >
         <span className="truncate">
           {value || <span className="text-gray-400">{placeholder}</span>}
@@ -46,8 +53,8 @@ export default function Dropdown({
       </button>
 
       {/* Dropdown options */}
-      {expanded && (
-        <div className="absolute mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-md z-50">
+      {expanded && !disabled && (
+        <div className="absolute mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-md z-[60]">
           {options.map((opt) => (
             <button
               key={opt}

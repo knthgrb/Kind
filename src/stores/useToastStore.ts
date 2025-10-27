@@ -212,7 +212,7 @@ export const useToastStore = create<ToastState>()(
           // Mark notification as read if this is a notification toast
           if (toastToRemove?.data?.notificationId) {
             // Import and call NotificationService to mark as read
-            import("@/services/notifications/NotificationService")
+            import("@/services/client/NotificationService")
               .then(({ NotificationService }) => {
                 NotificationService.markAsRead(
                   toastToRemove.data!.notificationId as string

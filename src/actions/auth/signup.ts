@@ -14,7 +14,6 @@ export async function signup(formData: FormData) {
     firstName: (formData.get("firstName") as string).trim(),
     lastName: (formData.get("lastName") as string).trim(),
     role: role,
-    businessName: formData.get("businessName")?.toString().trim() || undefined,
   };
 
   const result = await AuthService.signup(data);
