@@ -143,7 +143,7 @@ export default function AddEmployeeModal({
                 onChange={(e) => setName(e.target.value)}
                 type="text"
                 placeholder="Enter employee name"
-                className="w-full h-12 rounded-md border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
               />
             </div>
 
@@ -157,7 +157,7 @@ export default function AddEmployeeModal({
                 onChange={setJob}
                 options={jobOptions}
                 placeholder="Select job position"
-                className="border border-[#DFDFDF] rounded-md"
+                className="border border-[#DFDFDF] rounded-xl"
               />
             </div>
 
@@ -171,7 +171,7 @@ export default function AddEmployeeModal({
                 value={joiningDate}
                 onChange={(e) => setJoiningDate(e.target.value)}
                 type="date"
-                className="w-full h-12 rounded-md border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
               />
             </div>
 
@@ -185,7 +185,7 @@ export default function AddEmployeeModal({
                 onChange={(val) => setStatus(val as "Active" | "Inactive")}
                 options={statusOptions}
                 placeholder="Select status"
-                className="border border-[#DFDFDF] rounded-md"
+                className="border border-[#DFDFDF] rounded-xl"
               />
             </div>
 
