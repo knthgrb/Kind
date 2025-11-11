@@ -46,7 +46,7 @@ export default function RootLayout({
             <NotificationInitializer />
             <NotificationPrompt />
             <Suspense fallback={null}>
-              <SubscriptionSuccessHandler />
+            <SubscriptionSuccessHandler />
             </Suspense>
             {children}
             <ToastContainer />
