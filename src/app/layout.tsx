@@ -6,15 +6,8 @@ import InstallPrompt from "@/components/pwa/InstallPrompt";
 import NotificationInitializer from "@/components/notification/NotificationInitializer";
 import NotificationPrompt from "@/components/notification/NotificationPrompt";
 import AuthProvider from "@/components/common/AuthProvider";
-import dynamic from "next/dynamic";
 import SubscriptionSuccessHandler from "@/components/common/SubscriptionSuccessHandler";
-
-const ToastContainer = dynamic(
-  () => import("@/components/toast/ToastContainer"),
-  {
-    ssr: false,
-  }
-);
+import { ToastContainer } from "@/components/toast";
 
 // Import the required fonts
 const plusJakartaSans = Plus_Jakarta_Sans({
