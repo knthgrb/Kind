@@ -1,65 +1,68 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
-import { Toast } from "@/components/toast";
+import {
+  useToastActions,
+  useShowSuccess,
+  useShowError,
+  useShowInfo,
+  useShowWarning,
+} from "@/stores/useToastStore";
 
-interface ToastData {
-  id: string;
-  message: string;
-  type: "success" | "error" | "info" | "warning";
-  duration?: number;
-}
+/**
+ * Backward-compatible hook that wraps the Zustand toast store
+ * Provides a simple API for showing toasts
+ */
+export function useToast() {
+  const showSuccess = useShowSuccess();
+  const showError = useShowError();
+  const showInfo = useShowInfo();
+  const showWarning = useShowWarning();
+  const addToast = useToastActions().addToast;
 
-interface ToastContextType {
-  showToast: (
-    message: string,
-    type?: "success" | "error" | "info" | "warning",
-    duration?: number
-  ) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<ToastData[]>([]);
-
+  /**
+   * Simple toast function for backward compatibility
+   * @param message - The message to display (used as title)
+   * @param type - The type of toast
+   * @param duration - Optional duration in milliseconds
+   */
   const showToast = (
     message: string,
     type: "success" | "error" | "info" | "warning" = "info",
-    duration: number = 3000
+    duration?: number
   ) => {
-    const id = Date.now().toString();
-    const newToast: ToastData = { id, message, type, duration };
+    const toastOptions = duration ? { duration } : undefined;
 
-    setToasts((prev) => [...prev, newToast]);
+    switch (type) {
+      case "success":
+        showSuccess(message, undefined, toastOptions);
+        break;
+      case "error":
+        showError(message, undefined, toastOptions);
+        break;
+      case "warning":
+        showWarning(message, undefined, toastOptions);
+        break;
+      case "info":
+      default:
+        showInfo(message, undefined, toastOptions);
+        break;
+    }
   };
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  return {
+    showToast,
+    showSuccess,
+    showError,
+    showInfo,
+    showWarning,
+    addToast,
   };
-
-  return (
-    <ToastContext.Provider value={{ showToast }}>
-      {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            duration={toast.duration}
-            onClose={() => removeToast(toast.id)}
-          />
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
 }
 
-export function useToast() {
-  const context = useContext(ToastContext);
-  if (context === undefined) {
-    throw new Error("useToast must be used within a ToastProvider");
-  }
-  return context;
+/**
+ * ToastProvider is no longer needed since we use Zustand
+ * This is kept for backward compatibility but does nothing
+ */
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }
