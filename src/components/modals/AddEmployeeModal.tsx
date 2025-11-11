@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import ContinueModal from "@/components/modals/ContinueModal";
+import { useToastActions } from "@/stores/useToastStore";
 import Dropdown from "@/components/dropdown/Dropdown";
 import { FaTimes } from "react-icons/fa";
 import PrimaryButton from "../buttons/PrimaryButton";
@@ -22,20 +22,12 @@ export default function AddEmployeeModal({
   onClose,
   onEmployeeAdded,
 }: AddEmployeeModalProps) {
+  const { showSuccess, showError } = useToastActions();
+  
   // form state
   const [kindtaoUserId, setKindtaoUserId] = useState("");
   const [jobPostTitle, setJobPostTitle] = useState(""); // For dropdown display
   const [status, setStatus] = useState<"active" | "inactive">("active");
-
-  // modal state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalProps, setModalProps] = useState<{
-    title?: string;
-    description?: string;
-    buttonLabel?: string;
-    icon?: string | null;
-    onAction?: () => void;
-  }>({});
 
   // Job posts state
   const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
@@ -56,18 +48,15 @@ export default function AddEmployeeModal({
     }
   }, [isOpen]);
 
-  // Fetch KindTao users when job post is selected
+  // Fetch KindTao users when job post is selected (by job title)
   useEffect(() => {
     if (jobPostTitle) {
-      const selectedJob = jobPosts.find((job) => job.job_title === jobPostTitle);
-      if (selectedJob) {
-        loadKindTaoUsers(selectedJob.id);
-        setKindtaoUserId(""); // Reset selection when job changes
-      }
+      loadKindTaoUsers(jobPostTitle);
+      setKindtaoUserId(""); // Reset selection when job changes
     } else {
       setKindtaoUsers([]);
     }
-  }, [jobPostTitle, jobPosts]);
+  }, [jobPostTitle]);
 
   const loadJobPosts = async () => {
     setLoadingJobPosts(true);
@@ -85,10 +74,10 @@ export default function AddEmployeeModal({
     }
   };
 
-  const loadKindTaoUsers = async (jobId: string) => {
+  const loadKindTaoUsers = async (jobTitle: string) => {
     setLoadingKindtaoUsers(true);
     try {
-      const result = await getKindTaoUsersForJob(jobId);
+      const result = await getKindTaoUsersForJob(jobTitle);
       if (result.success) {
         setKindtaoUsers(result.users);
       } else {
@@ -113,18 +102,16 @@ export default function AddEmployeeModal({
   const selectedKindTaoUser = kindtaoUsers.find((user) => user.name === kindtaoUserId);
 
   const handleAddEmployee = async () => {
+    if (!kindtaoUserId.trim() || !jobPostTitle.trim() || !selectedKindTaoUser) {
+      showError("Please complete all required fields before adding the employee.");
+      return;
+    }
+
+    // Find the first job post with this title (we'll use any of them since they're grouped by title)
     const selectedJob = jobPosts.find((job) => job.job_title === jobPostTitle);
     
-    if (!kindtaoUserId.trim() || !jobPostTitle.trim() || !selectedJob || !selectedKindTaoUser) {
-      setModalProps({
-        title: "Missing Information",
-        description:
-          "Please complete all required fields before adding the employee.",
-        buttonLabel: "OK",
-        icon: null,
-        onAction: () => setModalOpen(false),
-      });
-      setModalOpen(true);
+    if (!selectedJob) {
+      showError("Job post not found. Please try again.");
       return;
     }
 
@@ -139,38 +126,15 @@ export default function AddEmployeeModal({
       });
 
       if (result.success) {
-      setModalProps({
-        title: "Employee Added",
-          description: `${selectedKindTaoUser.name} has been added to your team successfully`,
-        buttonLabel: "Continue",
-        icon: "/icons/checkCircleOTP.png",
-        onAction: () => {
-          setModalOpen(false);
-          onClose();
-          onEmployeeAdded?.();
-        },
-      });
-      setModalOpen(true);
+        showSuccess(`${selectedKindTaoUser.name} has been added to your team successfully`);
+        onClose();
+        onEmployeeAdded?.();
       } else {
-        setModalProps({
-          title: "Error",
-          description: result.error || "Something went wrong while adding the employee.",
-          buttonLabel: "OK",
-          icon: null,
-          onAction: () => setModalOpen(false),
-        });
-        setModalOpen(true);
+        showError(result.error || "Something went wrong while adding the employee.");
       }
     } catch (err) {
       console.error("Failed to add employee:", err);
-      setModalProps({
-        title: "Error",
-        description: "Something went wrong while adding the employee.",
-        buttonLabel: "OK",
-        icon: null,
-        onAction: () => setModalOpen(false),
-      });
-      setModalOpen(true);
+      showError("Something went wrong while adding the employee.");
     }
   };
 
@@ -285,16 +249,6 @@ export default function AddEmployeeModal({
         </div>
       </div>
 
-      {/* Success/Error Modal */}
-      <ContinueModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onAction={modalProps.onAction ?? (() => setModalOpen(false))}
-        title={modalProps.title ?? ""}
-        description={modalProps.description ?? ""}
-        buttonLabel={modalProps.buttonLabel ?? "OK"}
-        icon={modalProps.icon ?? undefined}
-      />
     </>,
     document.body
   );

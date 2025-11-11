@@ -42,9 +42,17 @@ export async function getJobPostsForEmployeeSelection(): Promise<{
       };
     }
 
+    // Group by job_title and keep only unique job titles
+    const uniqueJobTitles = new Map<string, JobPost>();
+    (data || []).forEach((job: any) => {
+      if (!uniqueJobTitles.has(job.job_title)) {
+        uniqueJobTitles.set(job.job_title, job);
+      }
+    });
+
     return {
       success: true,
-      jobPosts: (data || []) as JobPost[],
+      jobPosts: Array.from(uniqueJobTitles.values()) as JobPost[],
     };
   } catch (error) {
     console.error("Error in getJobPostsForEmployeeSelection:", error);

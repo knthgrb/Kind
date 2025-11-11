@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { FaTimes, FaExclamationTriangle } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 import PrimaryButton from "../buttons/PrimaryButton";
 import SecondaryButton from "../buttons/SecondaryButton";
 
@@ -75,20 +75,18 @@ export default function JobActionModal({
   jobTitle,
   isLoading = false,
 }: JobActionModalProps) {
-  const [password, setPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  const [deleteText, setDeleteText] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const config = actionConfig[action];
 
   const handleConfirm = () => {
     if (action === "delete") {
-      if (!password.trim()) {
-        setPasswordError("Password is required to delete a job");
+      if (!deleteText.trim()) {
+        setDeleteError("Please type DELETE to confirm");
         return;
       }
-      // In a real implementation, you'd verify the password here
-      // For now, we'll just check if it's not empty
-      if (password !== "DELETE") {
-        setPasswordError("Incorrect password");
+      if (deleteText !== "DELETE") {
+        setDeleteError("Please type DELETE exactly as shown");
         return;
       }
     }
@@ -96,8 +94,8 @@ export default function JobActionModal({
   };
 
   const handleClose = () => {
-    setPassword("");
-    setPasswordError("");
+    setDeleteText("");
+    setDeleteError("");
     onClose();
   };
 
@@ -142,44 +140,27 @@ export default function JobActionModal({
               <p className={`text-sm ${config.color}`}>{config.description}</p>
             </div>
 
-            {/* Password field for delete action */}
+            {/* Delete confirmation field */}
             {action === "delete" && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter your password to confirm deletion
+                  Type DELETE to confirm deletion
                 </label>
                 <input
-                  type="password"
-                  value={password}
+                  type="text"
+                  value={deleteText}
                   onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordError("");
+                    setDeleteText(e.target.value);
+                    setDeleteError("");
                   }}
-                  placeholder="Enter password"
+                  placeholder="Type DELETE"
                   className={`w-full h-12 rounded-xl border px-4 outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                    passwordError ? "border-red-300" : "border-gray-300"
+                    deleteError ? "border-red-300" : "border-gray-300"
                   }`}
                 />
-                {passwordError && (
-                  <p className="text-red-600 text-sm mt-1">{passwordError}</p>
+                {deleteError && (
+                  <p className="text-red-600 text-sm mt-1">{deleteError}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Type "DELETE" to confirm deletion
-                </p>
-              </div>
-            )}
-
-            {/* Warning for delete action */}
-            {action === "delete" && (
-              <div className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
-                <FaExclamationTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-red-800">Warning</p>
-                  <p className="text-sm text-red-700 mt-1">
-                    This action is irreversible. All job data, applications, and
-                    conversations will be permanently deleted.
-                  </p>
-                </div>
               </div>
             )}
           </div>

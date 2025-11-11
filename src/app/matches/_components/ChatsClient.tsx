@@ -151,7 +151,7 @@ export default function ChatsClient() {
 
       if (existingConversation) {
         // Navigate to existing conversation
-        router.push(`/messages/${existingConversation.id}`);
+        router.push(`/kindbossing/messages/${existingConversation.id}`);
         return;
       }
 
@@ -170,7 +170,7 @@ export default function ChatsClient() {
         );
 
         // Navigate to new conversation
-        router.push(`/messages/${conversation.id}`);
+        router.push(`/kindbossing/messages/${conversation.id}`);
       }
     } catch (error) {
       console.error("Error creating conversation:", error);

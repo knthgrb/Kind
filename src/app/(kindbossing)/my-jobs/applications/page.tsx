@@ -33,6 +33,9 @@ export default function ApplicationsPage() {
   const [applicantBoostStatus, setApplicantBoostStatus] = useState<
     Record<string, { isBoosted: boolean; boostExpiresAt: string | null }>
   >({});
+  const [applicantNames, setApplicantNames] = useState<Record<string, string>>(
+    {}
+  );
   const [jobDetails, setJobDetails] = useState<JobPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,6 +74,15 @@ export default function ApplicationsPage() {
         setJobDetails(result.jobDetails);
       }
 
+      // Create initial name map from applications
+      const initialNames: Record<string, string> = {};
+      result.applications.forEach((app) => {
+        if (app.applicant_name && app.applicant_name !== "Applicant") {
+          initialNames[app.applicant_id] = app.applicant_name;
+        }
+      });
+      setApplicantNames(initialNames);
+
       // Load first application's profile if available
       if (result.applications.length > 0) {
         await loadKindTaoProfile(result.applications[0].applicant_id);
@@ -78,7 +90,7 @@ export default function ApplicationsPage() {
 
         // Preload next applicant profile for blur preview
         if (result.applications.length > 1) {
-          const nextProfile = await ProfileService.getKindTaoProfileByUserId(
+          const nextProfile = await loadKindTaoProfileAsync(
             result.applications[1].applicant_id
           );
           setNextKindtaoProfile(nextProfile);
@@ -95,7 +107,20 @@ export default function ApplicationsPage() {
   const loadKindTaoProfileAsync = async (
     applicantId: string
   ): Promise<UserProfile | null> => {
-    return await ProfileService.getKindTaoProfileByUserId(applicantId);
+    const profile = await ProfileService.getKindTaoProfileByUserId(applicantId);
+    if (profile) {
+      // Update applicant name map
+      const fullName = [profile.first_name, profile.last_name]
+        .filter(Boolean)
+        .join(" ");
+      if (fullName) {
+        setApplicantNames((prev) => ({
+          ...prev,
+          [applicantId]: fullName,
+        }));
+      }
+    }
+    return profile;
   };
 
   const loadKindTaoProfile = async (applicantId: string) => {
@@ -105,6 +130,17 @@ export default function ApplicationsPage() {
       );
       if (profile) {
         setKindtaoProfile(profile);
+
+        // Update applicant name map
+        const fullName = [profile.first_name, profile.last_name]
+          .filter(Boolean)
+          .join(" ");
+        if (fullName) {
+          setApplicantNames((prev) => ({
+            ...prev,
+            [applicantId]: fullName,
+          }));
+        }
       }
     } catch (error) {
       console.error("Error loading KindTao profile:", error);
@@ -446,7 +482,9 @@ export default function ApplicationsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-gray-900">
-                      {app.applicant_name || "Applicant"}
+                      {applicantNames[app.applicant_id] ||
+                        app.applicant_name ||
+                        "Applicant"}
                     </p>
                     {(() => {
                       // Check if this applicant has a boosted profile

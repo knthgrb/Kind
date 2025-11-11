@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import Dropdown from "@/components/dropdown/Dropdown";
 import { postJob } from "@/actions/jobs/post-job";
 import { updateJob } from "@/actions/jobs/update-job";
@@ -19,6 +22,18 @@ import {
   getProvincesForRegion,
 } from "@/utils/regionMapping";
 import { useToastActions } from "@/stores/useToastStore";
+
+// Zod schema for form validation
+const jobFormSchema = z.object({
+  title: z.string().min(1, "Job title is required"),
+  municipality: z.string().min(1, "Municipality/City is required"),
+  province: z.string().min(1, "Province is required"),
+  amount: z.string().min(1, "Rate amount is required"),
+  unit: z.string().min(1, "Rate unit is required"),
+  description: z.string().min(1, "Description is required"),
+});
+
+type JobFormData = z.infer<typeof jobFormSchema>;
 
 type PostJobModalProps = {
   isOpen: boolean;
@@ -109,17 +124,41 @@ export default function PostJobModal({
   const router = useRouter();
   const { showSuccess, showError } = useToastActions();
 
-  // form state
-  const [title, setTitle] = useState("");
+  // React Hook Form setup
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+    reset,
+    control,
+  } = useForm<JobFormData>({
+    resolver: zodResolver(jobFormSchema),
+    defaultValues: {
+      title: "",
+      municipality: "",
+      province: "",
+      amount: "₱550",
+      unit: "Per Day",
+      description: "",
+    },
+    mode: "onBlur",
+  });
+
+  // Watch form values
+  const title = watch("title");
+  const municipality = watch("municipality");
+  const province = watch("province");
+  const amount = watch("amount");
+  const unit = watch("unit");
+  const description = watch("description");
+
+  // Additional state for non-form fields
   const [titleSearch, setTitleSearch] = useState("");
   const [barangay, setBarangay] = useState("");
-  const [municipality, setMunicipality] = useState("");
-  const [province, setProvince] = useState("");
   const [region, setRegion] = useState("");
   const [selectedRegionCode, setSelectedRegionCode] = useState("");
-  const [amount, setAmount] = useState("₱550");
-  const [unit, setUnit] = useState("Per Day");
-  const [description, setDescription] = useState("");
   const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
@@ -174,7 +213,7 @@ export default function PostJobModal({
   // Populate form when editing
   useEffect(() => {
     if (editingJob) {
-      setTitle(editingJob.job_title || "");
+      setValue("title", editingJob.job_title || "");
       setTitleSearch(editingJob.job_title || "");
 
       // Parse location string into barangay, municipality, province
@@ -186,27 +225,27 @@ export default function PostJobModal({
       const parts = locationStr.split(",").map((p) => p.trim());
       if (parts.length >= 3) {
         setBarangay(parts[0] || "");
-        setMunicipality(parts[1] || "");
-        setProvince(parts[2] || provinceStr);
+        setValue("municipality", parts[1] || "");
+        setValue("province", parts[2] || provinceStr);
       } else if (parts.length === 2) {
         setBarangay("");
-        setMunicipality(parts[0] || "");
-        setProvince(parts[1] || provinceStr);
+        setValue("municipality", parts[0] || "");
+        setValue("province", parts[1] || provinceStr);
       } else if (parts.length === 1 && parts[0]) {
         // If only one part, assume it's municipality or province
         if (provinceStr && parts[0] !== provinceStr) {
           setBarangay("");
-          setMunicipality(parts[0]);
-          setProvince(provinceStr);
+          setValue("municipality", parts[0]);
+          setValue("province", provinceStr);
         } else {
           setBarangay("");
-          setMunicipality("");
-          setProvince(provinceStr || parts[0]);
+          setValue("municipality", "");
+          setValue("province", provinceStr || parts[0]);
         }
       } else {
         setBarangay("");
-        setMunicipality("");
-        setProvince(provinceStr);
+        setValue("municipality", "");
+        setValue("province", provinceStr);
       }
 
       setRegion(regionStr);
@@ -217,8 +256,9 @@ export default function PostJobModal({
         }
       }
 
-      setAmount(editingJob.salary || "₱550");
-      setDescription(editingJob.job_description || "");
+      setValue("amount", editingJob.salary || "₱550");
+      setValue("unit", "Per Day");
+      setValue("description", editingJob.job_description || "");
       setRequiredSkills(editingJob.required_skills || []);
       setJobType(editingJob.job_type || "daily");
       setSalaryMin((editingJob as any).salary_min?.toString() || "");
@@ -253,15 +293,18 @@ export default function PostJobModal({
       }
     } else {
       // Reset form for new job
-      setTitle("");
+      reset({
+        title: "",
+        municipality: "",
+        province: "",
+        amount: "₱550",
+        unit: "Per Day",
+        description: "",
+      });
       setTitleSearch("");
       setBarangay("");
-      setMunicipality("");
-      setProvince("");
       setRegion("");
       setSelectedRegionCode("");
-      setAmount("₱550");
-      setDescription("");
       setRequiredSkills([]);
       setJobType("daily");
       setSalaryMin("");
@@ -274,7 +317,7 @@ export default function PostJobModal({
       setStartTime("09:00");
       setEndTime("18:00");
     }
-  }, [editingJob]);
+  }, [editingJob, setValue, reset]);
 
   const amounts = ["₱350", "₱450", "₱500", "₱550", "₱600", "₱700", "₱800"];
   const units = ["Per Hour", "Per Day", "Per Week", "Per Month"];
@@ -401,36 +444,23 @@ export default function PostJobModal({
     return skill.charAt(0).toUpperCase() + skill.slice(1).replace("_", " ");
   };
 
-  const handlePost = async () => {
-    // Validate required fields
-    if (
-      !title.trim() ||
-      !municipality.trim() ||
-      !province.trim() ||
-      !amount ||
-      !unit ||
-      !description.trim()
-    ) {
-      showError("Please complete all required fields before posting.");
-      return;
-    }
-
+  const onSubmit = async (data: JobFormData) => {
     // Build location string from barangay, municipality, province
     const locationParts = [];
     if (barangay.trim()) locationParts.push(barangay.trim());
-    if (municipality.trim()) locationParts.push(municipality.trim());
-    if (province.trim()) locationParts.push(province.trim());
+    if (data.municipality.trim()) locationParts.push(data.municipality.trim());
+    if (data.province.trim()) locationParts.push(data.province.trim());
     const locationString = locationParts.join(", ");
 
     // Ensure region is set from province
     let finalRegion = region;
-    if (!finalRegion && province) {
-      const regionInfo = getRegionForProvince(province);
+    if (!finalRegion && data.province) {
+      const regionInfo = getRegionForProvince(data.province);
       finalRegion = regionInfo?.region || "";
     }
 
     try {
-      const numericAmount = parseInt(amount.replace(/[₱,]/g, ""), 10);
+      const numericAmount = parseInt(data.amount.replace(/[₱,]/g, ""), 10);
       const numericSalaryMin = salaryMin
         ? parseInt(salaryMin.replace(/[₱,]/g, ""), 10)
         : numericAmount;
@@ -448,12 +478,12 @@ export default function PostJobModal({
 
       const jobData = {
         kindbossing_user_id: familyId,
-        job_title: title,
-        job_description: description,
+        job_title: data.title,
+        job_description: data.description,
         location: locationString,
-        province: province.trim(),
+        province: data.province.trim(),
         region: finalRegion,
-        salary: amount,
+        salary: data.amount,
         job_type: jobType as JobType,
         required_skills: requiredSkills,
         work_schedule: workSchedule,
@@ -486,7 +516,7 @@ export default function PostJobModal({
 
       // Show success toast
       showSuccess(
-        `Your job "${title}" has been ${
+        `Your job "${data.title}" has been ${
           editingJob ? "updated" : "posted"
         } successfully`
       );
@@ -503,16 +533,18 @@ export default function PostJobModal({
 
   const handleClose = () => {
     // Reset form
-    setTitle("");
+    reset({
+      title: "",
+      municipality: "",
+      province: "",
+      amount: "₱550",
+      unit: "Per Day",
+      description: "",
+    });
     setTitleSearch("");
     setBarangay("");
-    setMunicipality("");
-    setProvince("");
     setRegion("");
     setSelectedRegionCode("");
-    setAmount("₱550");
-    setUnit("Per Day");
-    setDescription("");
     setRequiredSkills([]);
     setSkillInput("");
     setSalaryMin("");
@@ -564,9 +596,11 @@ export default function PostJobModal({
                   value={titleSearch}
                   onChange={(e) => {
                     setTitleSearch(e.target.value);
-                    setShowTitleDropdown(e.target.value.length > 0);
-                    if (e.target.value && !title) {
-                      setTitle(e.target.value);
+                    setShowTitleDropdown(true);
+                    if (e.target.value) {
+                      setValue("title", e.target.value, {
+                        shouldValidate: true,
+                      });
                     }
                   }}
                   onFocus={() => {
@@ -578,27 +612,35 @@ export default function PostJobModal({
                     setTimeout(() => setShowTitleDropdown(false), 200);
                   }}
                   placeholder="Search or type job title..."
-                  className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                  className={`w-full h-12 rounded-xl border px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent ${
+                    errors.title
+                      ? "border-red-300 focus:border-red-300"
+                      : "border-[#DFDFDF]"
+                  }`}
                 />
-                {showTitleDropdown &&
-                  titleSearch &&
-                  filteredJobTitles.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto mt-1">
-                      {filteredJobTitles.slice(0, 10).map((jobTitle) => (
-                        <button
-                          key={jobTitle}
-                          onClick={() => {
-                            setTitle(jobTitle);
-                            setTitleSearch(jobTitle);
-                            setShowTitleDropdown(false);
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm border-b border-gray-50 last:border-b-0"
-                        >
-                          {jobTitle}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                {errors.title && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.title.message}
+                  </p>
+                )}
+                {showTitleDropdown && filteredJobTitles.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto mt-1">
+                    {filteredJobTitles.slice(0, 10).map((jobTitle) => (
+                      <button
+                        key={jobTitle}
+                        type="button"
+                        onClick={() => {
+                          setValue("title", jobTitle);
+                          setTitleSearch(jobTitle);
+                          setShowTitleDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm border-b border-gray-50 last:border-b-0"
+                      >
+                        {jobTitle}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -622,23 +664,49 @@ export default function PostJobModal({
                 {/* Municipality */}
                 <div>
                   <input
-                    required
-                    value={municipality}
-                    onChange={(e) => setMunicipality(e.target.value)}
+                    {...register("municipality")}
                     type="text"
                     placeholder="Municipality/City *"
-                    className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                    className={`w-full h-12 rounded-xl border px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent ${
+                      errors.municipality
+                        ? "border-red-300 focus:border-red-300"
+                        : "border-[#DFDFDF]"
+                    }`}
                   />
+                  {errors.municipality && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {errors.municipality.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Province */}
                 <div>
-                  <Dropdown
-                    value={province}
-                    onChange={(value) => setProvince(value)}
-                    options={allProvinces}
-                    placeholder="Select Province *"
-                    className="border border-[#DFDFDF] rounded-xl"
+                  <Controller
+                    name="province"
+                    control={control}
+                    render={({ field }) => (
+                      <>
+                        <Dropdown
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value);
+                          }}
+                          options={allProvinces}
+                          placeholder="Select Province *"
+                          className={`border rounded-xl ${
+                            errors.province
+                              ? "border-red-300"
+                              : "border-[#DFDFDF]"
+                          }`}
+                        />
+                        {errors.province && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {errors.province.message}
+                          </p>
+                        )}
+                      </>
+                    )}
                   />
                 </div>
               </div>
@@ -650,20 +718,60 @@ export default function PostJobModal({
                 Rate *
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Dropdown
-                  value={amount}
-                  onChange={setAmount}
-                  options={amounts}
-                  placeholder="Select amount"
-                  className="border border-[#DFDFDF] rounded-xl"
-                />
-                <Dropdown
-                  value={unit}
-                  onChange={setUnit}
-                  options={units}
-                  placeholder="Select unit"
-                  className="border border-[#DFDFDF] rounded-xl"
-                />
+                <div>
+                  <Controller
+                    name="amount"
+                    control={control}
+                    render={({ field }) => (
+                      <>
+                        <Dropdown
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value);
+                          }}
+                          options={amounts}
+                          placeholder="Select amount"
+                          className={`border rounded-xl ${
+                            errors.amount
+                              ? "border-red-300"
+                              : "border-[#DFDFDF]"
+                          }`}
+                        />
+                        {errors.amount && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {errors.amount.message}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  />
+                </div>
+                <div>
+                  <Controller
+                    name="unit"
+                    control={control}
+                    render={({ field }) => (
+                      <>
+                        <Dropdown
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value);
+                          }}
+                          options={units}
+                          placeholder="Select unit"
+                          className={`border rounded-xl ${
+                            errors.unit ? "border-red-300" : "border-[#DFDFDF]"
+                          }`}
+                        />
+                        {errors.unit && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {errors.unit.message}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
@@ -759,12 +867,19 @@ export default function PostJobModal({
                 Description *
               </label>
               <textarea
-                required
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                {...register("description")}
                 placeholder="Describe the job requirements, responsibilities, and any specific details..."
-                className="w-full min-h-[120px] rounded-xl border border-[#DFDFDF] px-4 py-3 outline-none resize-y focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                className={`w-full min-h-[120px] rounded-xl border px-4 py-3 outline-none resize-y focus:ring-2 focus:ring-[#CC0000] focus:border-transparent ${
+                  errors.description
+                    ? "border-red-300 focus:border-red-300"
+                    : "border-[#DFDFDF]"
+                }`}
               />
+              {errors.description && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
 
             {/* Enhanced Matching Fields */}
@@ -927,9 +1042,18 @@ export default function PostJobModal({
 
             {/* Footer */}
             <div className="flex justify-end space-x-3">
-              <SecondaryButton onClick={handleClose}>Cancel</SecondaryButton>
-              <PrimaryButton onClick={handlePost}>
-                {editingJob ? "Update Job" : "Post Job"}
+              <SecondaryButton onClick={handleClose} disabled={isSubmitting}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton
+                onClick={handleSubmit(onSubmit)}
+                disabled={isSubmitting}
+              >
+                {isSubmitting
+                  ? "Processing..."
+                  : editingJob
+                  ? "Update Job"
+                  : "Post Job"}
               </PrimaryButton>
             </div>
           </div>

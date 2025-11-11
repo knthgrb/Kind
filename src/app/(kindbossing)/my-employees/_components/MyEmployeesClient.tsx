@@ -2,16 +2,19 @@
 
 import React from "react";
 import Pagination from "@/components/pagination/Pagination";
-import Link from "next/link";
 import { Employee } from "@/types/employee";
-import { FaUser, FaEye } from "react-icons/fa";
+import { FaUser, FaEye, FaTrash } from "react-icons/fa";
 
 interface MyEmployeesClientProps {
   employees: Employee[];
+  onViewEmployee?: (employee: Employee) => void;
+  onRemoveEmployee?: (employee: Employee) => void;
 }
 
 export default function MyEmployeesClient({
   employees,
+  onViewEmployee,
+  onRemoveEmployee,
 }: MyEmployeesClientProps) {
   const pageSize = 10;
   const [page, setPage] = React.useState(1);
@@ -38,12 +41,7 @@ export default function MyEmployeesClient({
           <table className="min-w-full bg-white">
             <thead className="bg-white border-b border-gray-200 text-gray-500 text-sm">
               <tr>
-                {[
-                  "Employee",
-                  "Job",
-                  "Status",
-                  "Action",
-                ].map((h) => (
+                {["Employee", "Job", "Status", "Action"].map((h) => (
                   <th
                     key={h}
                     className="text-gray-500 text-sm font-medium px-6 py-4 text-left whitespace-nowrap"
@@ -67,7 +65,9 @@ export default function MyEmployeesClient({
                       <div>
                         <div className="font-semibold text-gray-900">
                           {employee.kindtao?.user
-                            ? `${employee.kindtao.user.first_name || ""} ${employee.kindtao.user.last_name || ""}`.trim() || "Unknown"
+                            ? `${employee.kindtao.user.first_name || ""} ${
+                                employee.kindtao.user.last_name || ""
+                              }`.trim() || "Unknown"
                             : "Unknown"}
                         </div>
                       </div>
@@ -86,13 +86,24 @@ export default function MyEmployeesClient({
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/my-employees/${employee.id}`}
-                      className="inline-flex items-center space-x-2 bg-[#CC0000] text-white text-xs px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <FaEye className="w-3 h-3" />
-                      <span>View Profile</span>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onViewEmployee?.(employee)}
+                        className="p-2 cursor-pointer text-gray-600 hover:text-[#CC0000] hover:bg-red-50 rounded-lg transition-colors"
+                        title="View Profile"
+                      >
+                        <FaEye className="w-4 h-4" />
+                      </button>
+                      {employee.status === "active" && (
+                        <button
+                          onClick={() => onRemoveEmployee?.(employee)}
+                          className="p-2 cursor-pointer text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove Employee"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -115,7 +126,9 @@ export default function MyEmployeesClient({
               <div className="flex-1">
                 <div className="font-semibold text-gray-900">
                   {employee.kindtao?.user
-                    ? `${employee.kindtao.user.first_name || ""} ${employee.kindtao.user.last_name || ""}`.trim() || "Unknown"
+                    ? `${employee.kindtao.user.first_name || ""} ${
+                        employee.kindtao.user.last_name || ""
+                      }`.trim() || "Unknown"
                     : "Unknown"}
                 </div>
                 <div className="text-sm text-gray-600">
@@ -131,14 +144,24 @@ export default function MyEmployeesClient({
               </span>
             </div>
 
-
-            <Link
-              href={`/my-employees/${employee.id}`}
-              className="w-full bg-[#CC0000] text-white text-xs px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-center flex items-center justify-center space-x-2"
-            >
-              <FaEye className="w-3 h-3" />
-              <span>View Profile</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onViewEmployee?.(employee)}
+                className="flex-1 p-2 cursor-pointer text-gray-600 hover:text-[#CC0000] hover:bg-red-50 rounded-lg transition-colors text-center flex items-center justify-center"
+                title="View Profile"
+              >
+                <FaEye className="w-4 h-4" />
+              </button>
+              {employee.status === "active" && (
+                <button
+                  onClick={() => onRemoveEmployee?.(employee)}
+                  className="flex-1 p-2 cursor-pointer text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors text-center flex items-center justify-center"
+                  title="Remove Employee"
+                >
+                  <FaTrash className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

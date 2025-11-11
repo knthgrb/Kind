@@ -68,7 +68,47 @@ export async function addEmployee(
       };
     }
 
-    // Insert employee
+    // Check if employee already exists for this job post
+    const { data: existingEmployee } = await supabase
+      .from("employees")
+      .select("id, status")
+      .eq("kindbossing_user_id", user.id)
+      .eq("kindtao_user_id", employee.kindtao_user_id)
+      .eq("job_post_id", employee.job_post_id)
+      .single();
+
+    if (existingEmployee) {
+      // If exists and is inactive, update to active
+      if (existingEmployee.status === "inactive") {
+        const { data: updatedEmployee, error: updateError } = await supabase
+          .from("employees")
+          .update({ status: "active", updated_at: new Date().toISOString() })
+          .eq("id", existingEmployee.id)
+          .select("id")
+          .single();
+
+        if (updateError) {
+          console.error("Error updating employee:", updateError);
+          return {
+            success: false,
+            error: "Failed to update employee",
+          };
+        }
+
+        return {
+          success: true,
+          employeeId: updatedEmployee.id,
+        };
+      } else {
+        // Already active employee
+        return {
+          success: false,
+          error: "This employee is already added for this job position",
+        };
+      }
+    }
+
+    // Insert new employee
     const { data: newEmployee, error: insertError } = await supabase
       .from("employees")
       .insert({
