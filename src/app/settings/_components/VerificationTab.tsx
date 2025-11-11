@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { KindTaoVerificationRequest } from "@/types/workExperience";
 import { VerificationRequestService } from "@/services/client/VerificationRequestService";
 import UploadDocumentModal from "./UploadDocumentModal";
@@ -28,7 +28,7 @@ export default function VerificationTab({ userRole }: VerificationTabProps) {
     string | null
   >(null);
   const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([]);
-  const { showSuccess, showError } = useToastStore();
+  const { showSuccess, showError } = useToastActions();
 
   useEffect(() => {
     loadData();
@@ -175,10 +175,7 @@ export default function VerificationTab({ userRole }: VerificationTabProps) {
 
       if (error) throw error;
 
-      showSuccess(
-        "Verification Requested",
-        "Your verification request has been submitted. Our team will review your documents and get back to you soon."
-      );
+      showSuccess("Your verification request has been submitted. Our team will review your documents and get back to you soon.");
 
       loadData();
     } catch (error) {
@@ -189,7 +186,7 @@ export default function VerificationTab({ userRole }: VerificationTabProps) {
         details: (error as any)?.details,
         hint: (error as any)?.hint,
       });
-      showError("Error", "Failed to submit verification request");
+      showError("Failed to submit verification request");
     } finally {
       setIsRequestingVerification(false);
     }

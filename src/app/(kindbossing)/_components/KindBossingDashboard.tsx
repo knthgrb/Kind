@@ -55,7 +55,7 @@ export default function MyDashboard() {
       </p>
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/kindbossing/my-jobs">
+        <Link href="/my-jobs">
           <div className="rounded-xl border border-[#D0D0D0] bg-white cursor-pointer hover:border-[#CB0000] transition-colors">
             <StatCard label="Active Job Posts" value={stats.totalJobPosts} />
           </div>

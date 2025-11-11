@@ -21,7 +21,7 @@ export function useToast() {
 
   /**
    * Simple toast function for backward compatibility
-   * @param message - The message to display (used as title)
+   * @param message - The message to display
    * @param type - The type of toast
    * @param duration - Optional duration in milliseconds
    */
@@ -30,21 +30,19 @@ export function useToast() {
     type: "success" | "error" | "info" | "warning" = "info",
     duration?: number
   ) => {
-    const toastOptions = duration ? { duration } : undefined;
-
     switch (type) {
       case "success":
-        showSuccess(message, undefined, toastOptions);
+        showSuccess(message, duration);
         break;
       case "error":
-        showError(message, undefined, toastOptions);
+        showError(message, duration);
         break;
       case "warning":
-        showWarning(message, undefined, toastOptions);
+        showWarning(message, duration);
         break;
       case "info":
       default:
-        showInfo(message, undefined, toastOptions);
+        showInfo(message, duration);
         break;
     }
   };

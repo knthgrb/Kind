@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { VerificationRequestService } from "@/services/client/VerificationRequestService";
 import {
   IoCloudUploadOutline,
@@ -24,7 +24,7 @@ export default function UploadDocumentModal({
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("");
-  const { showSuccess, showError } = useToastStore();
+  const { showSuccess, showError } = useToastActions();
 
   const documentTypes = [
     {
@@ -59,7 +59,7 @@ export default function UploadDocumentModal({
     if (file) {
       // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        showError("Error", "File size must be less than 10MB");
+        showError("File size must be less than 10MB");
         return;
       }
       setSelectedFile(file);
@@ -68,7 +68,7 @@ export default function UploadDocumentModal({
 
   const handleUpload = async () => {
     if (!selectedFile || !documentType) {
-      showError("Error", "Please select a file and document type");
+      showError("Please select a file and document type");
       return;
     }
 
@@ -111,10 +111,7 @@ export default function UploadDocumentModal({
         document_type: documentType,
       });
 
-      showSuccess(
-        "Success",
-        "Document uploaded successfully and saved to your verification folder."
-      );
+      showSuccess("Document uploaded successfully and saved to your verification folder.");
 
       // Reset form
       setSelectedFile(null);
@@ -125,7 +122,7 @@ export default function UploadDocumentModal({
       onDocumentUploaded();
     } catch (error) {
       console.error("Error uploading document:", error);
-      showError("Error", "Failed to upload document");
+      showError("Failed to upload document");
     } finally {
       setIsUploading(false);
     }

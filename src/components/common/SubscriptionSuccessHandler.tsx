@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 
 export default function SubscriptionSuccessHandler() {
   const searchParams = useSearchParams();
-  const { showSuccess, showError } = useToastStore();
+  const { showSuccess, showError } = useToastActions();
 
   useEffect(() => {
     const subscription = searchParams.get("subscription");

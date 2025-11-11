@@ -10,7 +10,7 @@ import {
 } from "@/components/modals/JobPreferencesModal";
 import { JOB_CATEGORIES } from "@/constants/jobCategories";
 import { JobPreferencesService } from "@/services/client/JobPreferencesService";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 
 interface JobPreferencesInlineEditorProps {
   initialPreferences?: JobPreferences | null;
@@ -47,7 +47,7 @@ export default function JobPreferencesInlineEditor({
   const [isLoading, setIsLoading] = useState(!initialPreferences);
   const [isSaving, setIsSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const { showError, showSuccess } = useToastStore();
+  const { showError, showSuccess } = useToastActions();
 
   useEffect(() => {
     if (initialPreferences) {
@@ -86,7 +86,7 @@ export default function JobPreferencesInlineEditor({
     try {
       const { data, error } = await JobPreferencesService.getJobPreferences();
       if (error) {
-        showError("Error", "Failed to load job preferences. Please try again.");
+        showError("Failed to load job preferences. Please try again.");
         return;
       }
 
@@ -160,15 +160,15 @@ export default function JobPreferencesInlineEditor({
         await JobPreferencesService.updateJobPreferences(preferences);
 
       if (!success) {
-        showError("Error", error || "Failed to save preferences. Try again.");
+        showError(error || "Failed to save preferences. Try again.");
         return;
       }
 
-      showSuccess("Success", "Job preferences updated successfully.");
+      showSuccess("Job preferences updated successfully.");
       onSaved(preferences);
     } catch (error) {
       console.error("Error saving job preferences:", error);
-      showError("Error", "Failed to save job preferences. Please try again.");
+      showError("Failed to save job preferences. Please try again.");
     } finally {
       setIsSaving(false);
     }

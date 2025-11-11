@@ -16,7 +16,7 @@ import {
   SubscriptionService,
   SubscriptionData,
 } from "@/services/client/SubscriptionService";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import ToggleButton from "../_components/toggleButton";
 import VerificationTab from "./VerificationTab";
@@ -58,7 +58,7 @@ export default function Settings() {
   useEffect(() => {
     pushPreferenceRef.current = pushToggled;
   }, [pushToggled]);
-  const { showSuccess, showError, showWarning, showInfo } = useToastStore();
+  const { showSuccess, showError, showWarning, showInfo } = useToastActions();
   const { user } = useAuthStore();
 
   // Check user role - only if user exists
@@ -131,7 +131,7 @@ export default function Settings() {
       const { data, error } = await JobPreferencesService.getJobPreferences();
       if (error) {
         console.error("Error loading job preferences:", error);
-        showError("Error", "Failed to load job preferences");
+        showError("Failed to load job preferences");
       } else {
         setJobPreferences(data);
       }
@@ -154,7 +154,7 @@ export default function Settings() {
       const { data, error } = await SubscriptionService.getSubscription();
       if (error) {
         console.error("Error loading subscription:", error);
-        showError("Error", "Failed to load subscription data");
+        showError("Failed to load subscription data");
       } else {
         setCurrentSubscription(data);
         if (data?.subscription_tier) {
@@ -179,10 +179,7 @@ export default function Settings() {
         await NotificationPreferencesService.getPreference();
       if (error) {
         console.error("Error loading notification preference:", error);
-        showError(
-          "Error",
-          "Failed to load your notification preference. Please try again."
-        );
+        showError("Failed to load your notification preference. Please try again.");
         setPushToggled(false);
         return;
       }
@@ -192,10 +189,7 @@ export default function Settings() {
       if (wantsNotifications && permissionStatus !== "granted") {
         setPushToggled(false);
         if (permissionStatus === "denied") {
-          showWarning(
-            "Notifications Blocked",
-            "Notifications are blocked by your browser. Enable them in browser settings to receive updates."
-          );
+          showWarning("Notifications are blocked by your browser. Enable them in browser settings to receive updates.");
         }
 
         if (data?.receiveNotification) {
@@ -207,10 +201,7 @@ export default function Settings() {
       setPushToggled(wantsNotifications);
     } catch (error) {
       console.error("Error processing notification preference:", error);
-      showError(
-        "Error",
-        "Failed to load notification settings. Please try again later."
-      );
+      showError("Failed to load notification settings. Please try again later.");
       setPushToggled(false);
     } finally {
       setIsNotificationsLoading(false);
@@ -231,15 +222,9 @@ export default function Settings() {
         const { success, error } =
           await NotificationPreferencesService.updatePreference(false);
         if (!success && error) {
-          showError(
-            "Error",
-            "We couldn't sync your notification preference. Please try again later."
-          );
+          showError("We couldn't sync your notification preference. Please try again later.");
         }
-        showWarning(
-          "Notifications Blocked",
-          "Notifications are blocked by your browser. Enable them in browser settings to receive updates."
-        );
+        showWarning("Notifications are blocked by your browser. Enable them in browser settings to receive updates.");
       } else if (status === "granted" && !pushPreferenceRef.current) {
         // refresh server-side preference when permission is granted again
         void loadNotificationPreference();
@@ -293,32 +278,12 @@ export default function Settings() {
 
           setPushToggled(true);
           pushPreferenceRef.current = true;
-          showSuccess(
-            "Notifications Enabled",
-            "You'll now receive notifications for new messages and updates.",
-            { duration: 5000 }
-          );
+          showSuccess("Notifications enabled. You'll now receive notifications for new messages and updates.", 5000);
         } else {
           await NotificationPreferencesService.updatePreference(false);
           setPushToggled(false);
           pushPreferenceRef.current = false;
-          showWarning(
-            "Notifications Blocked",
-            "Notifications are blocked by your browser. Please enable them in your browser settings to receive notifications.",
-            {
-              persistent: true,
-              duration: 10000,
-              action: {
-                label: "Learn More",
-                onClick: () => {
-                  window.open(
-                    "https://support.google.com/chrome/answer/3220216",
-                    "_blank"
-                  );
-                },
-              },
-            }
-          );
+          showWarning("Notifications are blocked by your browser. Please enable them in your browser settings to receive notifications.", 10000);
         }
       } else {
         const { success, error } =
@@ -330,20 +295,12 @@ export default function Settings() {
 
         setPushToggled(false);
         pushPreferenceRef.current = false;
-        showInfo(
-          "Notifications Disabled",
-          "You won't receive push notifications anymore. You can re-enable them anytime.",
-          { duration: 5000 }
-        );
+        showInfo("Notifications disabled. You won't receive push notifications anymore. You can re-enable them anytime.", 5000);
       }
     } catch (error) {
       console.error("Error toggling notifications:", error);
       setPushToggled(previousValue);
-      showError(
-        "Error",
-        "Failed to update notification settings. Please try again.",
-        { duration: 5000 }
-      );
+      showError("Failed to update notification settings. Please try again.", 5000);
     } finally {
       setIsLoading(false);
     }
@@ -351,22 +308,12 @@ export default function Settings() {
 
   const handlePlanSelect = (plan: any) => {
     if (plan.tier === "Free") {
-      showInfo(
-        "Already on Free Plan",
-        "You are currently using the free plan.",
-        {
-          duration: 3000,
-        }
-      );
+      showInfo("You are currently using the free plan.", 3000);
       return;
     }
 
     // Here you would typically integrate with your payment system
-    showSuccess(
-      "Plan Selected",
-      `You have selected the ${plan.tier} plan. Payment integration would be implemented here.`,
-      { duration: 5000 }
-    );
+    showSuccess(`You have selected the ${plan.tier} plan. Payment integration would be implemented here.`, 5000);
 
     setCurrentPlan(plan.tier);
     setIsSubscriptionModalOpen(false);

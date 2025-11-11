@@ -10,7 +10,7 @@ import {
   FaArrowDown,
 } from "react-icons/fa";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { UserSubscription } from "@/types/subscription";
 import {
   getUserSubscription,
@@ -38,7 +38,7 @@ export default function SubscriptionModal({
     useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { showSuccess, showError, showWarning, showInfo } = useToastStore();
+  const { showSuccess, showError, showWarning, showInfo } = useToastActions();
 
   // Get monthly subscription plans with swipe credits
   const availablePlans = SUBSCRIPTION_PLANS.filter(
@@ -96,10 +96,7 @@ export default function SubscriptionModal({
         currentSubscription &&
         currentSubscription.xendit_plan_id === plan.id
       ) {
-        showInfo(
-          "Already on this plan",
-          "You are already subscribed to this plan."
-        );
+        showInfo("You are already subscribed to this plan.");
         return;
       }
 

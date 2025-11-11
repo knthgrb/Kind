@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import ContinueModal from "@/components/modals/ContinueModal";
 import Dropdown from "@/components/dropdown/Dropdown";
 import { postJob } from "@/actions/jobs/post-job";
 import { updateJob } from "@/actions/jobs/update-job";
@@ -19,6 +18,7 @@ import {
   getAllRegions,
   getProvincesForRegion,
 } from "@/utils/regionMapping";
+import { useToastActions } from "@/stores/useToastStore";
 
 type PostJobModalProps = {
   isOpen: boolean;
@@ -107,6 +107,7 @@ export default function PostJobModal({
   editingJob,
 }: PostJobModalProps) {
   const router = useRouter();
+  const { showSuccess, showError } = useToastActions();
 
   // form state
   const [title, setTitle] = useState("");
@@ -135,6 +136,12 @@ export default function PostJobModal({
     lng: number;
   } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
+
+  // Work schedule fields
+  const [scheduleType, setScheduleType] = useState<string>("full-time");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState<string>("09:00");
+  const [endTime, setEndTime] = useState<string>("18:00");
 
   // Get all provinces for dropdown
   const allProvinces = useMemo(() => {
@@ -235,6 +242,15 @@ export default function PostJobModal({
           });
         }
       }
+
+      // Parse work schedule if available
+      const workSchedule = (editingJob as any).work_schedule || {};
+      if (workSchedule && typeof workSchedule === "object") {
+        setScheduleType(workSchedule.schedule_type || "full-time");
+        setSelectedDays(workSchedule.days || []);
+        setStartTime(workSchedule.start_time || "09:00");
+        setEndTime(workSchedule.end_time || "18:00");
+      }
     } else {
       // Reset form for new job
       setTitle("");
@@ -253,18 +269,12 @@ export default function PostJobModal({
       setSalaryType("daily");
       setExpiresAt("");
       setLocationCoordinates(null);
+      setScheduleType("full-time");
+      setSelectedDays([]);
+      setStartTime("09:00");
+      setEndTime("18:00");
     }
   }, [editingJob]);
-
-  // modal state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalProps, setModalProps] = useState<{
-    title?: string;
-    description?: string;
-    buttonLabel?: string;
-    icon?: string | null;
-    onAction?: () => void;
-  }>({});
 
   const amounts = ["₱350", "₱450", "₱500", "₱550", "₱600", "₱700", "₱800"];
   const units = ["Per Hour", "Per Day", "Per Week", "Per Month"];
@@ -277,6 +287,22 @@ export default function PostJobModal({
     "full-time",
     "part-time",
   ];
+  const scheduleTypes = ["full-time", "part-time", "flexible", "shift"];
+  const daysOfWeek = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+
+  const toggleDay = (day: string) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
 
   // Filter job titles based on search
   const filteredJobTitles = useMemo(() => {
@@ -385,14 +411,7 @@ export default function PostJobModal({
       !unit ||
       !description.trim()
     ) {
-      setModalProps({
-        title: "Missing Information",
-        description: "Please complete all required fields before posting.",
-        buttonLabel: "OK",
-        icon: null,
-        onAction: () => setModalOpen(false),
-      });
-      setModalOpen(true);
+      showError("Please complete all required fields before posting.");
       return;
     }
 
@@ -419,6 +438,14 @@ export default function PostJobModal({
         ? parseInt(salaryMax.replace(/[₱,]/g, ""), 10)
         : numericAmount;
 
+      // Build work schedule object
+      const workSchedule = {
+        schedule_type: scheduleType,
+        days: selectedDays,
+        start_time: startTime,
+        end_time: endTime,
+      };
+
       const jobData = {
         kindbossing_user_id: familyId,
         job_title: title,
@@ -429,7 +456,7 @@ export default function PostJobModal({
         salary: amount,
         job_type: jobType as JobType,
         required_skills: requiredSkills,
-        work_schedule: {},
+        work_schedule: workSchedule,
         required_years_of_experience: 0,
         preferred_languages: [],
         is_boosted: false,
@@ -457,31 +484,20 @@ export default function PostJobModal({
         result = await postJob(jobData);
       }
 
-      setModalProps({
-        title: editingJob ? "Job Updated" : "Job Posted",
-        description: `Your job "${title}" has been ${
+      // Show success toast
+      showSuccess(
+        `Your job "${title}" has been ${
           editingJob ? "updated" : "posted"
-        } successfully`,
-        buttonLabel: "Continue",
-        icon: "/icons/checkCircleOTP.png",
-        onAction: () => {
-          setModalOpen(false);
-          onClose();
-          onJobPosted?.();
-          router.push(`/kindbossing/my-jobs`);
-        },
-      });
-      setModalOpen(true);
+        } successfully`
+      );
+
+      // Close modal and navigate
+      onClose();
+      onJobPosted?.();
+      router.push(`/my-jobs`);
     } catch (err) {
       console.error("Failed to post job:", err);
-      setModalProps({
-        title: "Error",
-        description: "Something went wrong while posting the job.",
-        buttonLabel: "OK",
-        icon: null,
-        onAction: () => setModalOpen(false),
-      });
-      setModalOpen(true);
+      showError("Something went wrong while posting the job.");
     }
   };
 
@@ -505,6 +521,10 @@ export default function PostJobModal({
     setJobType("daily");
     setExpiresAt("");
     setLocationCoordinates(null);
+    setScheduleType("full-time");
+    setSelectedDays([]);
+    setStartTime("09:00");
+    setEndTime("18:00");
     onClose();
   };
 
@@ -830,6 +850,81 @@ export default function PostJobModal({
               )}
             </div>
 
+            {/* Work Schedule */}
+            <div className="mb-5">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Work Schedule
+              </h3>
+
+              {/* Schedule Type */}
+              <div className="mb-4">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Schedule Type
+                </label>
+                <select
+                  value={scheduleType}
+                  onChange={(e) => setScheduleType(e.target.value)}
+                  className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                >
+                  {scheduleTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.charAt(0).toUpperCase() +
+                        type.slice(1).replace("-", " ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Days Selection */}
+              <div className="mb-4">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Working Days
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {daysOfWeek.map((day) => (
+                    <label
+                      key={day}
+                      className="flex items-center space-x-2 p-3 rounded-lg border border-[#DFDFDF] cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedDays.includes(day)}
+                        onChange={() => toggleDay(day)}
+                        className="w-4 h-4 text-[#CC0000] border-gray-300 rounded focus:ring-[#CC0000]"
+                      />
+                      <span className="text-sm text-gray-700">{day}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Time Range */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
+                    End Time
+                  </label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-[#DFDFDF] px-4 outline-none focus:ring-2 focus:ring-[#CC0000] focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Footer */}
             <div className="flex justify-end space-x-3">
               <SecondaryButton onClick={handleClose}>Cancel</SecondaryButton>
@@ -840,17 +935,6 @@ export default function PostJobModal({
           </div>
         </div>
       </div>
-
-      {/* Success/Error Modal */}
-      <ContinueModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onAction={modalProps.onAction ?? (() => setModalOpen(false))}
-        title={modalProps.title ?? ""}
-        description={modalProps.description ?? ""}
-        buttonLabel={modalProps.buttonLabel ?? "OK"}
-        icon={modalProps.icon ?? undefined}
-      />
     </>,
     document.body
   );

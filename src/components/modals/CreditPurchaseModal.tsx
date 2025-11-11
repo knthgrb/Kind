@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FaTimes, FaCoins, FaRocket, FaCheck } from "react-icons/fa";
 import { BOOST_PACKAGES } from "@/constants/subscriptionPlans";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 
 type CreditType = "swipe_credits" | "boost_credits";
 
@@ -23,7 +23,7 @@ export default function CreditPurchaseModal({
   const [processingPackageId, setProcessingPackageId] = useState<string | null>(
     null
   );
-  const { showError, showSuccess } = useToastStore();
+  const { showError, showSuccess } = useToastActions();
 
   if (!isOpen) return null;
 

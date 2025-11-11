@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { WorkExperience, WorkExperienceFormData } from "@/types/workExperience";
 import { createClient } from "@/utils/supabase/client";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { IoClose, IoCloudUploadOutline } from "react-icons/io5";
 
 interface WorkExperienceModalProps {
@@ -34,7 +34,7 @@ export default function WorkExperienceModal({
 
   const [isLoading, setIsLoading] = useState(false);
   const [skillInput, setSkillInput] = useState("");
-  const { showSuccess, showError } = useToastStore();
+  const { showSuccess, showError } = useToastActions();
 
   useEffect(() => {
     if (experience) {
@@ -181,14 +181,11 @@ export default function WorkExperienceModal({
         }
       }
 
-      showSuccess(
-        "Success",
-        experience ? "Work experience updated" : "Work experience added"
-      );
+      showSuccess(experience ? "Work experience updated" : "Work experience added");
       onSave();
     } catch (error) {
       console.error("Error saving work experience:", error);
-      showError("Error", "Failed to save work experience");
+      showError("Failed to save work experience");
     } finally {
       setIsLoading(false);
     }

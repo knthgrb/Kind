@@ -392,7 +392,7 @@ export default function ApplicationsPage() {
       <div className="w-80 bg-white border-r border-gray-200 p-6">
         <div className="mb-6">
           <Link
-            href="/kindbossing/my-jobs"
+            href="/my-jobs"
             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#CC0000] mb-3 transition-colors"
           >
             <FaArrowLeft className="w-4 h-4" />

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { FaCrown, FaStar, FaCheck, FaRocket, FaBolt } from "react-icons/fa";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { UserSubscription } from "@/types/subscription";
 import {
   getUserSubscription,
@@ -22,7 +22,7 @@ export default function SubscriptionStatus({
   );
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
-  const { showSuccess, showError, showWarning, showInfo } = useToastStore();
+  const { showSuccess, showError, showWarning, showInfo } = useToastActions();
 
   useEffect(() => {
     loadSubscription();
@@ -57,13 +57,7 @@ export default function SubscriptionStatus({
         const result = await cancelSubscription();
 
         if (result.success) {
-          showSuccess(
-            "Subscription Cancelled",
-            result.message || "Subscription cancelled successfully",
-            {
-              duration: 5000,
-            }
-          );
+          showSuccess(result.message || "Subscription cancelled successfully", 5000);
           // Reload subscription to update UI
           await loadSubscription();
         } else {

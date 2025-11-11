@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FiX } from "react-icons/fi";
 import { JobPreferencesService } from "@/services/client/JobPreferencesService";
-import { useToastStore } from "@/stores/useToastStore";
+import { useToastActions } from "@/stores/useToastStore";
 import { JOB_CATEGORIES } from "@/constants/jobCategories";
 
 interface JobPreferencesModalProps {
@@ -111,7 +111,7 @@ export default function JobPreferencesModal({
   >({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { showSuccess, showError } = useToastStore();
+  const { showSuccess, showError } = useToastActions();
 
   // Fetch job preferences when modal opens
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function JobPreferencesModal({
     try {
       const { data, error } = await JobPreferencesService.getJobPreferences();
       if (error) {
-        showError("Error", "Failed to load job preferences. Please try again.");
+        showError("Failed to load job preferences. Please try again.");
         console.error("Error fetching job preferences:", error);
       } else if (data) {
         setPreferences(data);
@@ -199,17 +199,14 @@ export default function JobPreferencesModal({
       const { success, error } =
         await JobPreferencesService.updateJobPreferences(preferences);
       if (success) {
-        showSuccess("Success", "Job preferences saved successfully!");
+        showSuccess("Job preferences saved successfully!");
         onSave(preferences);
         onClose();
       } else {
-        showError(
-          "Error",
-          error || "Failed to save job preferences. Please try again."
-        );
+        showError(error || "Failed to save job preferences. Please try again.");
       }
     } catch (error) {
-      showError("Error", "Failed to save job preferences. Please try again.");
+      showError("Failed to save job preferences. Please try again.");
       console.error("Error saving job preferences:", error);
     } finally {
       setIsSaving(false);
